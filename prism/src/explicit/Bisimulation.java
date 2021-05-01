@@ -28,9 +28,11 @@ package explicit;
 
 import java.util.ArrayList;
 import java.util.BitSet;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
 import parser.State;
 import prism.PrismComponent;
@@ -39,6 +41,11 @@ import prism.PrismNotSupportedException;
 
 /**
  * Class to perform bisimulation minimisation for explicit-state models.
+ * 
+ * @author Dave Parker
+ * @author Christian von Essen
+ * @author Zainab Fatmi
+ * @author Franck van Breugel
  */
 public class Bisimulation<Value> extends PrismComponent
 {
@@ -87,9 +94,12 @@ public class Bisimulation<Value> extends PrismComponent
 		//printPartition(dtmc);
 
 		// Iterative splitting
-		boolean changed = true;
+		/* boolean changed = true;
 		while (changed)
-			changed = splitDTMC(dtmc);
+			changed = splitDTMC(dtmc); */
+		
+		// Use the faster partitioning algorithm:
+		partition(dtmc);
 		mainLog.println("Minimisation: " + numStates + " to " + numBlocks + " States");
 		//printPartition(dtmc);
 
@@ -228,6 +238,103 @@ public class Bisimulation<Value> extends PrismComponent
 		}
 
 		return changed;
+	}
+	
+	/**
+	 * Partitions the states of the specified labelled Markov chain, updating
+	 * {@code numBlocks} and {@code partition}. States are in the same set, that is,
+	 * are mapped to the same integer, if and only if they are probabilistic
+	 * bisimilar.
+	 * 
+	 * @param dtmc a labelled Markov chain
+	 */
+	private void partition(DTMC dtmc) {
+
+		/*
+		 * transitions.get(s).get(t) is the probability of transitioning from state s to
+		 * state t
+		 */
+		ArrayList<Map<Integer, Double>> transitions = new ArrayList<Map<Integer, Double>>(numStates);
+		for (int source = 0; source < numStates; source++) {
+			Map<Integer, Double> successors = new HashMap<Integer, Double>();
+			Iterator<Entry<Integer, Double>> iter = dtmc.getTransitionsIterator(source);
+			while (iter.hasNext()) {
+				Entry<Integer, Double> transition = iter.next();
+				successors.put(transition.getKey(), transition.getValue());
+			}
+			transitions.add(successors);
+		}
+
+		/*
+		 * the block used as splitters
+		 */
+		BitSet splitters = new BitSet(numBlocks);
+		splitters.flip(0, numBlocks - 1); // exclude last block which contains all states without a label
+
+		int numberOfBlocksOld;
+		do {
+			numberOfBlocksOld = numBlocks;
+			numBlocks = 0;
+
+			int[] partitionOld = partition;
+			partition = new int[numStates];
+
+			BitSet splittersOld = splitters;
+			splitters = new BitSet(numberOfBlocksOld);
+
+			/*
+			 * blocks.get(b) is the list of sub-blocks that partition block b
+			 */
+			List<List<SubBlock>> blocks = new ArrayList<List<SubBlock>>(numberOfBlocksOld);
+			for (int b = 0; b < numberOfBlocksOld; b++) {
+				List<SubBlock> empty = new ArrayList<SubBlock>();
+				blocks.add(empty);
+			}
+
+			for (int source = 0; source < numStates; source++) {
+
+				/*
+				 * sub-block that contains state source
+				 */
+				SubBlock subBlock = null;
+				for (Map.Entry<Integer, Double> entry : transitions.get(source).entrySet()) {
+					Integer target = entry.getKey();
+					int blockOfTarget = partitionOld[target];
+					Double probabilityOld;
+					if (splittersOld.get(blockOfTarget)) {
+						if (subBlock == null) {
+							subBlock = new NonEmptySubBlock();
+							probabilityOld = 0.0;
+						} else {
+							probabilityOld = subBlock.get(blockOfTarget);
+							if (probabilityOld == null) {
+								probabilityOld = 0.0;
+							}
+						}
+						Double probability = entry.getValue();
+						subBlock.put(blockOfTarget, probabilityOld + probability);
+					}
+				}
+				if (subBlock == null) {
+					subBlock = new EmptySubBlock();
+				}
+
+				int blockOfSource = partitionOld[source];
+				List<SubBlock> subBlocks = blocks.get(blockOfSource);
+				int index = subBlocks.indexOf(subBlock);
+				if (index == -1) { // there is no sub-block with the same lifting as state source
+					subBlock.setID(numBlocks);
+					subBlocks.add(subBlock);
+					partition[source] = numBlocks;
+					if (subBlocks.size() > 1) { // first sub-block is not used as a splitter in the next refinement step
+						splitters.set(numBlocks);
+					}
+					numBlocks++;
+				} else {
+					partition[source] = subBlocks.get(index).getID();
+				}
+			}
+		} while (numBlocks != numberOfBlocksOld);
 	}
 
 	/**
