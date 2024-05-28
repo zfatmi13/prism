@@ -35,6 +35,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import parser.State;
+import prism.Evaluator;
 import prism.PrismComponent;
 import prism.PrismException;
 import prism.PrismNotSupportedException;
@@ -244,22 +245,23 @@ public class Bisimulation<Value> extends PrismComponent
 	 * 
 	 * @param dtmc a labelled Markov chain
 	 */
-	private void partition(DTMC dtmc) {
+	private void partition(DTMC<Value> dtmc) {
 
 		/*
 		 * transitions.get(s).get(t) is the probability of transitioning from state s to
 		 * state t
 		 */
-		ArrayList<Map<Integer, Double>> transitions = new ArrayList<Map<Integer, Double>>(numStates);
+		ArrayList<Map<Integer, Value>> transitions = new ArrayList<Map<Integer, Value>>(numStates);
 		for (int source = 0; source < numStates; source++) {
-			Map<Integer, Double> successors = new HashMap<Integer, Double>();
-			Iterator<Entry<Integer, Double>> iter = dtmc.getTransitionsIterator(source);
+			Map<Integer, Value> successors = new HashMap<Integer, Value>();
+			Iterator<Entry<Integer, Value>> iter = dtmc.getTransitionsIterator(source);
 			while (iter.hasNext()) {
-				Entry<Integer, Double> transition = iter.next();
+				Entry<Integer, Value> transition = iter.next();
 				successors.put(transition.getKey(), transition.getValue());
 			}
 			transitions.add(successors);
 		}
+		Evaluator<Value> eval = dtmc.getEvaluator();
 
 		/*
 		 * the block used as splitters
@@ -281,9 +283,9 @@ public class Bisimulation<Value> extends PrismComponent
 			/*
 			 * blocks.get(b) is the list of sub-blocks that partition block b
 			 */
-			List<List<SubBlock>> blocks = new ArrayList<List<SubBlock>>(numberOfBlocksOld);
+			List<List<SubBlock<Value>>> blocks = new ArrayList<List<SubBlock<Value>>>(numberOfBlocksOld);
 			for (int b = 0; b < numberOfBlocksOld; b++) {
-				List<SubBlock> empty = new ArrayList<SubBlock>();
+				List<SubBlock<Value>> empty = new ArrayList<SubBlock<Value>>();
 				blocks.add(empty);
 			}
 
@@ -292,31 +294,31 @@ public class Bisimulation<Value> extends PrismComponent
 				/*
 				 * sub-block that contains state source
 				 */
-				SubBlock subBlock = null;
-				for (Map.Entry<Integer, Double> entry : transitions.get(source).entrySet()) {
+				SubBlock<Value> subBlock = null;
+				for (Map.Entry<Integer, Value> entry : transitions.get(source).entrySet()) {
 					Integer target = entry.getKey();
 					int blockOfTarget = partitionOld[target];
-					Double probabilityOld;
+					Value probabilityOld;
 					if (splittersOld.get(blockOfTarget)) {
 						if (subBlock == null) {
-							subBlock = new NonEmptySubBlock();
-							probabilityOld = 0.0;
+							subBlock = new NonEmptySubBlock<Value>(eval);
+							probabilityOld = eval.zero();
 						} else {
 							probabilityOld = subBlock.get(blockOfTarget);
 							if (probabilityOld == null) {
-								probabilityOld = 0.0;
+								probabilityOld = eval.zero();
 							}
 						}
-						Double probability = entry.getValue();
-						subBlock.put(blockOfTarget, probabilityOld + probability);
+						Value probability = entry.getValue();
+						subBlock.put(blockOfTarget, eval.add(probabilityOld, probability));
 					}
 				}
 				if (subBlock == null) {
-					subBlock = new EmptySubBlock();
+					subBlock = new EmptySubBlock<Value>();
 				}
 
 				int blockOfSource = partitionOld[source];
-				List<SubBlock> subBlocks = blocks.get(blockOfSource);
+				List<SubBlock<Value>> subBlocks = blocks.get(blockOfSource);
 				int index = subBlocks.indexOf(subBlock);
 				if (index == -1) { // there is no sub-block with the same lifting as state source
 					subBlock.setID(numBlocks);

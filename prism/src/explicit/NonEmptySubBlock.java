@@ -20,6 +20,8 @@ package explicit;
 import java.util.HashMap;
 import java.util.Map;
 
+import prism.Evaluator;
+
 /**
  * A non-empty sub-block. Each state of a sub-block has the same lifting. This
  * lifting of a state s maps each block b to the probability of the state s
@@ -29,26 +31,32 @@ import java.util.Map;
  * @author Zainab Fatmi
  * @author Franck van Breugel
  */
-public final class NonEmptySubBlock extends SubBlock {
+public final class NonEmptySubBlock<Value> extends SubBlock<Value> {
+
+	/**
+	 * Evaluator for manipulating probability values in the distribution (of type {@code Value})
+	 */
+	private Evaluator<Value> eval;
 
 	/**
 	 * The lifting of this non-empty sub-block. It maps block IDs to probabilities.
 	 */
-	private final Map<Integer, Double> lifting;
+	private final Map<Integer, Value> lifting;
 
 	/**
 	 * Initializes this non-empty sub-block.
 	 */
-	public NonEmptySubBlock() {
+	public NonEmptySubBlock(Evaluator<Value> eval) {
 		super();
-		this.lifting = new HashMap<Integer, Double>();
+		this.lifting = new HashMap<Integer, Value>();
+		this.eval = eval;
 	}
 
 	/**
 	 * {@inheritDoc}
 	 */
 	@Override
-	public Double get(Integer block) {
+	public Value get(Integer block) {
 		return this.lifting.get(block);
 	}
 
@@ -56,7 +64,7 @@ public final class NonEmptySubBlock extends SubBlock {
 	 * {@inheritDoc}
 	 */
 	@Override
-	public void put(Integer block, Double probability) {
+	public void put(Integer block, Value probability) {
 		this.lifting.put(block, probability);
 	}
 
@@ -73,18 +81,20 @@ public final class NonEmptySubBlock extends SubBlock {
 	 */
 	@Override
 	public boolean equals(Object object) {
-		final double EPSILON = 1e-12;
+		// final double EPSILON = 1e-12;
 
 		if (object instanceof EmptySubBlock) {
 			return false;
 		} else {
-			NonEmptySubBlock other = (NonEmptySubBlock) object;
+			@SuppressWarnings("unchecked")
+			NonEmptySubBlock<Value> other = (NonEmptySubBlock<Value>) object;
 			if (this.lifting.size() != other.lifting.size()) {
 				return false;
 			} else {
-				for (Map.Entry<Integer, Double> entry : this.lifting.entrySet()) {
-					Double probability = other.lifting.get(entry.getKey());
-					if (probability == null || Math.abs(entry.getValue() - probability) > EPSILON) {
+				for (Map.Entry<Integer, Value> entry : this.lifting.entrySet()) {
+					Value probability = other.lifting.get(entry.getKey());
+					// if (probability == null || Math.abs(entry.getValue() - probability) > EPSILON) {
+					if (probability == null || eval.equals(entry.getValue(), probability)) {
 						return false;
 					}
 				}

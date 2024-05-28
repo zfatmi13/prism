@@ -23,7 +23,7 @@ package explicit;
  * @author Zainab Fatmi
  * @author Franck van Breugel
  */
-public final class EmptySubBlock extends SubBlock {
+public final class EmptySubBlock<Value> extends SubBlock<Value> {
 
 	/**
 	 * Tests whether the given object is an empty sub-block.
@@ -44,7 +44,7 @@ public final class EmptySubBlock extends SubBlock {
 	 * @throws UnsupportedOperationException always
 	 */
 	@Override
-	public Double get(Integer block) {
+	public Value get(Integer block) {
 		throw new UnsupportedOperationException();
 	}
 
@@ -56,7 +56,7 @@ public final class EmptySubBlock extends SubBlock {
 	 * @throws UnsupportedOperationException always
 	 */
 	@Override
-	public void put(Integer block, Double probability) {
+	public void put(Integer block, Value probability) {
 		throw new UnsupportedOperationException();
 	}
 }

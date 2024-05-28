@@ -25,7 +25,7 @@ package explicit;
  * @author Zainab Fatmi
  * @author Franck van Breugel
  */
-public abstract class SubBlock {
+public abstract class SubBlock<Value> {
 
 	/**
 	 * The ID of this sub-block. It will be used in the next refinement step when
@@ -57,7 +57,7 @@ public abstract class SubBlock {
 	 * @param block the ID of a block
 	 * @return the probability of transitioning to states in the given block
 	 */
-	public abstract Double get(Integer block);
+	public abstract Value get(Integer block);
 
 	/**
 	 * Sets the probability of transitioning to states in the given block to the
@@ -66,5 +66,5 @@ public abstract class SubBlock {
 	 * @param block       the ID of a block
 	 * @param probability the probability of transitioning to states in the block
 	 */
-	public abstract void put(Integer block, Double probability);
+	public abstract void put(Integer block, Value probability);
 }
