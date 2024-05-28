@@ -26,9 +26,9 @@
 
 package parser.ast;
 
-import param.BigRational;
-import parser.*;
-import parser.visitor.*;
+import parser.EvaluateContext;
+import parser.visitor.ASTVisitor;
+import parser.visitor.DeepCopy;
 import prism.PrismLangException;
 
 /**
@@ -75,12 +75,6 @@ public class ExpressionProp extends Expression
 	}
 
 	@Override
-	public BigRational evaluateExact(EvaluateContext ec) throws PrismLangException
-	{
-		throw new PrismLangException("Cannot evaluate property references", this);
-	}
-
-	@Override
 	public boolean returnsSingleValue()
 	{
 		return false;
@@ -95,12 +89,15 @@ public class ExpressionProp extends Expression
 	}
 
 	@Override
-	public Expression deepCopy()
+	public ExpressionProp deepCopy(DeepCopy copier)
 	{
-		ExpressionProp expr = new ExpressionProp(name);
-		expr.setType(type);
-		expr.setPosition(this);
-		return expr;
+		return this;
+	}
+
+	@Override
+	public ExpressionProp clone()
+	{
+		return (ExpressionProp) super.clone();
 	}
 
 	// Standard methods

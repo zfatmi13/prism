@@ -26,16 +26,16 @@
 
 package parser.ast;
 
-import java.util.List;
-
-import param.BigRational;
 import parser.EvaluateContext;
 import parser.Values;
 import parser.visitor.ASTVisitor;
+import parser.visitor.DeepCopy;
 import prism.OpRelOpBound;
 import prism.PrismException;
 import prism.PrismLangException;
 import prism.RewardGenerator;
+
+import java.util.List;
 
 public class ExpressionReward extends ExpressionQuant
 {
@@ -235,12 +235,6 @@ public class ExpressionReward extends ExpressionQuant
 	}
 
 	@Override
-	public BigRational evaluateExact(EvaluateContext ec) throws PrismLangException
-	{
-		throw new PrismLangException("Cannot evaluate an R operator without a model");
-	}
-
-	@Override
 	public String getResultName()
 	{
 		// For R=? properties, use name of reward structure where applicable
@@ -282,20 +276,24 @@ public class ExpressionReward extends ExpressionQuant
 	}
 
 	@Override
-	public Expression deepCopy()
+	public ExpressionReward deepCopy(DeepCopy copier) throws PrismLangException
 	{
-		ExpressionReward expr = new ExpressionReward();
-		expr.setExpression(getExpression() == null ? null : getExpression().deepCopy());
-		expr.setRelOp(getRelOp());
-		expr.setBound(getBound() == null ? null : getBound().deepCopy());
-		if (rewardStructIndex != null && rewardStructIndex instanceof Expression) expr.setRewardStructIndex(((Expression)rewardStructIndex).deepCopy());
-		else expr.setRewardStructIndex(rewardStructIndex);
-		if (rewardStructIndexDiv != null && rewardStructIndexDiv instanceof Expression) expr.setRewardStructIndexDiv(((Expression)rewardStructIndexDiv).deepCopy());
-		else expr.setRewardStructIndexDiv(rewardStructIndexDiv);
-		expr.setFilter(getFilter() == null ? null : (Filter)getFilter().deepCopy());
-		expr.setType(type);
-		expr.setPosition(this);
-		return expr;
+		super.deepCopy(copier);
+
+		if (rewardStructIndex != null && rewardStructIndex instanceof Expression) {
+			rewardStructIndex = copier.copy((Expression) rewardStructIndex);
+		}
+		if (rewardStructIndexDiv != null && rewardStructIndexDiv instanceof Expression) {
+			rewardStructIndexDiv = copier.copy((Expression) rewardStructIndexDiv);
+		}
+
+		return this;
+	}
+
+	@Override
+	public ExpressionReward clone()
+	{
+		return (ExpressionReward) super.clone();
 	}
 
 	// Standard methods

@@ -27,12 +27,10 @@
 package parser;
 
 import java.util.ArrayList;
+import java.util.List;
 
-import param.BigRational;
 import parser.type.Type;
-import parser.type.TypeBool;
-import parser.type.TypeDouble;
-import parser.type.TypeInt;
+import parser.type.TypeUtils;
 import prism.ModelInfo;
 import prism.PrismLangException;
 import prism.PrismUtils;
@@ -206,6 +204,14 @@ public class Values implements Cloneable //implements Comparable
 	}
 
 	/**
+	 * Get a list of all names for values stored.
+	 */
+	public List<String> getNames()
+	{
+		return names;
+	}
+
+	/**
 	 * Get the index of the value for variable/constant {@code name} (-1 if not present).
 	 */
 	public int getIndexOf(String name)
@@ -222,20 +228,6 @@ public class Values implements Cloneable //implements Comparable
 	}
 	
 	/**
-	 * Get the type for the {@code i}th value.
-	 * (This is based on the type of the Object storing the value.)
-	 */
-	public Type getType(int i)
-	{
-		Object o = values.get(i);
-		if (o instanceof Integer) return TypeInt.getInstance();
-		if (o instanceof Double)  return TypeDouble.getInstance();
-		if (o instanceof BigRational) return TypeDouble.getInstance();
-		if (o instanceof Boolean) return TypeBool.getInstance();
-		else return null;
-	}
-
-	/**
 	 * Get the {@code i}th value.
 	 */
 	public Object getValue(int i)
@@ -243,73 +235,6 @@ public class Values implements Cloneable //implements Comparable
 		return values.get(i);
 	}
 	
-	/**
-	 * Evaluate {@code i}th value as an int.
-	 * (Note: Booleans get mapped to 0/1)
-	 */
-	public int getIntValue(int i) throws PrismLangException
-	{
-		Object o;
-
-		o = values.get(i);
-
-		if (o instanceof Boolean) {
-			return ((Boolean)o).booleanValue() ? 1 : 0;
-		}
-		if (o instanceof Integer) {
-			return ((Integer)o).intValue();
-		}
-		if (o instanceof BigRational) {
-			return ((BigRational)o).toInt();
-		}
-
-		throw new PrismLangException("Cannot get integer value for \"" + getName(i) + "\"");
-	}
-
-	/**
-	 * Evaluate {@code i}th value as a double.
-	 * (Note: Booleans get mapped to 0.0/1.0)
-	 */
-	public double getDoubleValue(int i) throws PrismLangException
-	{
-		Object o;
-		
-		o = values.get(i);
-		
-		if (o instanceof Boolean) {
-			return ((Boolean)o).booleanValue() ? 1.0 : 0.0;
-		}
-		if (o instanceof Integer) {
-			return ((Integer)o).intValue();
-		}
-		if (o instanceof Double) {
-			return ((Double)o).doubleValue();
-		}
-		if (o instanceof BigRational) {
-			return ((BigRational)o).doubleValue();
-		}
-		
-		throw new PrismLangException("Cannot get double value for \"" + getName(i) + "\"");
-	}
-
-	/**
-	 * Evaluate {@code i}th value as a Boolean.
-	 */
-	public boolean getBooleanValue(int i) throws PrismLangException
-	{
-		Object o;
-
-		o = values.get(i);
-
-		if (o instanceof Boolean) {
-			return ((Boolean)o).booleanValue();
-		} else if (o instanceof BigRational) {
-			return ((BigRational)o).toBoolean();
-		} else {
-			throw new PrismLangException("Cannot get boolean value for \"" + getName(i) + "\"");
-		}
-	}
-
 	/**
 	 * Get the value for variable/constant {@code name}.
 	 * @throws PrismLangException if no value is present.
@@ -324,41 +249,31 @@ public class Values implements Cloneable //implements Comparable
 	}
 
 	/**
-	 * Evaluate variable/constant {@code name} as an int.
-	 * (Note: Booleans get mapped to 0/1)
+	 * Get a list of all values stored.
 	 */
-	public int getIntValueOf(String name) throws PrismLangException
+	public List<Object> getValues()
 	{
-		int i;
-		
-		i = getIndexOf(name);
-		if (i == -1) throw new PrismLangException("Couldn't get value for \"" + name + "\"");
-		return getIntValue(i);
+		return values;
 	}
 
 	/**
-	 * Evaluate variable/constant {@code name} as a double.
-	 * (Note: Booleans get mapped to 0.0/1.0)
+	 * Get a type for the {@code i}th value.
+	 * This is not stored explicitly here, so an appropriate type
+	 * is guessed based on the type of the Object storing the value.
 	 */
-	public double getDoubleValueOf(String n) throws PrismLangException
+	public Type getType(int i) throws PrismLangException
 	{
-		int i;
-		
-		i = getIndexOf(n);
-		if (i == -1) throw new PrismLangException("Couldn't get value for \"" + n + "\"");
-		return getDoubleValue(i);
+		return TypeUtils.guessTypeForValue(values.get(i));
 	}
 
 	/**
-	 * Evaluate variable/constant {@code name} as a boolean.
+	 * Get a list of types for all values stored.
+	 * These are not stored explicitly here, so appropriate types
+	 * are guessed based on the types of the Objects storing the values.
 	 */
-	public boolean getBooleanValueOf(String n) throws PrismLangException
+	public List<Type> getTypes() throws PrismLangException
 	{
-		int i;
-		
-		i = getIndexOf(n);
-		if (i == -1) throw new PrismLangException("Couldn't get value for \"" + n + "\"");
-		return getBooleanValue(i);
+		return TypeUtils.guessTypesForValues(values);
 	}
 
 	@Override
@@ -491,14 +406,14 @@ public class Values implements Cloneable //implements Comparable
 	/**
 	 * Format a value (as an Object) as a string.
 	 */
-	private String valToString(Object o)
+	public static String valToString(Object o)
 	{
 		String s;
 		
 		if (o instanceof Double) {
-			s = PrismUtils.formatDouble((double)o);
+			s = PrismUtils.formatDouble(12, (double) o);
 		} else {
-			s = o.toString();
+			s = String.valueOf(o);
 		}
 		
 		return s;

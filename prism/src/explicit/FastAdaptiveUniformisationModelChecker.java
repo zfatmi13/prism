@@ -156,7 +156,7 @@ public class FastAdaptiveUniformisationModelChecker extends PrismComponent
 		}
 
 		mainLog.println("Starting transient probability computation using fast adaptive uniformisation...");
-		ModulesFileModelGenerator prismModelGen = new ModulesFileModelGenerator(modulesFile, this);
+		ModulesFileModelGenerator<Double> prismModelGen = ModulesFileModelGenerator.createForDoubles(modulesFile, this);
 		FastAdaptiveUniformisation fau = new FastAdaptiveUniformisation(this, prismModelGen);
 		fau.setConstantValues(constantValues);
 
@@ -215,7 +215,7 @@ public class FastAdaptiveUniformisationModelChecker extends PrismComponent
 		mainLog.println("\nTotal probability lost is : " + fau.getTotalDiscreteLoss());
 		mainLog.println("Maximal number of states stored during analysis : " + fau.getMaxNumStates());
 
-		return new Result(new Double(fau.getValue()));
+		return new Result(Double.valueOf(fau.getValue()));
 	}
 
 	/**
@@ -224,7 +224,7 @@ public class FastAdaptiveUniformisationModelChecker extends PrismComponent
 	private Result checkExpressionReward(ExpressionReward expr) throws PrismException
 	{
 		mainLog.println("Starting transient probability computation using fast adaptive uniformisation...");
-		ModulesFileModelGenerator prismModelGen = new ModulesFileModelGenerator(modulesFile, this);
+		ModulesFileModelGenerator<Double> prismModelGen = ModulesFileModelGenerator.createForDoubles(modulesFile, this);
 		FastAdaptiveUniformisation fau = new FastAdaptiveUniformisation(this, prismModelGen);
 		ExpressionTemporal temporal = (ExpressionTemporal) expr.getExpression();
 		switch (temporal.getOperator()) {
@@ -244,6 +244,6 @@ public class FastAdaptiveUniformisationModelChecker extends PrismComponent
 		fau.computeTransientProbsAdaptive(time);
 		mainLog.println("\nTotal probability lost is : " + fau.getTotalDiscreteLoss());
 		mainLog.println("Maximal number of states stored during analysis : " + fau.getMaxNumStates());
-		return new Result(new Double(fau.getValue()));
+		return new Result(Double.valueOf(fau.getValue()));
 	}
 }

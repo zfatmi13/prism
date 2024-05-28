@@ -75,10 +75,10 @@ public class GUIMultiModel extends GUIPlugin implements PrismSettingsListener
 	//GUI
 	private JTextField fileTextField;
 	private JMenu modelMenu, newMenu, viewMenu, exportMenu, computeMenu, computeExportMenu;
-	private JMenu exportStatesMenu, exportTransMenu, exportStateRewardsMenu, exportTransRewardsMenu, exportLabelsMenu, exportSSMenu, exportTrMenu;
-	private AbstractAction viewStates, viewTrans, viewStateRewards, viewTransRewards, viewLabels, viewPrismCode, computeSS, computeTr, newPRISMModel,
+	private JMenu exportStatesMenu, exportTransMenu, exportObsMenu, exportStateRewardsMenu, exportTransRewardsMenu, exportLabelsMenu, exportSSMenu, exportTrMenu;
+	private AbstractAction viewStates, viewTrans, viewObs, viewStateRewards, viewTransRewards, viewLabels, viewPrismCode, computeSS, computeTr, newPRISMModel,
 			newPEPAModel, loadModel, reloadModel, saveModel, saveAsModel, parseModel, buildModel, exportStatesPlain, exportStatesMatlab,
-			exportTransPlain, exportTransMatlab, exportTransDot, exportTransDotStates, exportTransMRMC, exportStateRewardsPlain, exportStateRewardsMatlab,
+			exportTransPlain, exportTransMatlab, exportTransDot, exportTransDotStates, exportTransMRMC, exportObsPlain, exportObsMatlab, exportStateRewardsPlain, exportStateRewardsMatlab,
 			exportStateRewardsMRMC, exportTransRewardsPlain, exportTransRewardsMatlab, exportTransRewardsMRMC, exportLabelsPlain, exportLabelsMatlab,
 			exportSSPlain, exportSSMatlab, exportTrPlain, exportTrMatlab;
 	private JPopupMenu popup;
@@ -87,6 +87,7 @@ public class GUIMultiModel extends GUIPlugin implements PrismSettingsListener
 	private Map<String,FileFilter> modelFilters;
 	private Map<String,FileFilter> staFilters;
 	private Map<String,FileFilter> traFilters;
+	private Map<String,FileFilter> obsFilters;
 	private Map<String,FileFilter> labFilters;
 	private FileFilter textFilter;
 	private FileFilter matlabFilter;
@@ -172,6 +173,7 @@ public class GUIMultiModel extends GUIPlugin implements PrismSettingsListener
 		buildModel.setEnabled(!computing);
 		viewStates.setEnabled(!computing);
 		viewTrans.setEnabled(!computing);
+		viewObs.setEnabled(!computing);
 		viewStateRewards.setEnabled(!computing);
 		viewTransRewards.setEnabled(!computing);
 		viewLabels.setEnabled(!computing);
@@ -185,6 +187,8 @@ public class GUIMultiModel extends GUIPlugin implements PrismSettingsListener
 		exportTransDot.setEnabled(!computing);
 		exportTransDotStates.setEnabled(!computing);
 		exportTransMRMC.setEnabled(!computing);
+		exportObsPlain.setEnabled(!computing);
+		exportObsMatlab.setEnabled(!computing);
 		exportStateRewardsPlain.setEnabled(!computing);
 		exportStateRewardsMatlab.setEnabled(!computing);
 		exportStateRewardsMRMC.setEnabled(!computing);
@@ -373,6 +377,9 @@ public class GUIMultiModel extends GUIPlugin implements PrismSettingsListener
 			case GUIMultiModelHandler.TRANS_EXPORT:
 				res = showSaveFileDialog(traFilters.values(), traFilters.get("tra"));
 				break;
+			case GUIMultiModelHandler.OBSERVATIONS_EXPORT:
+				res = showSaveFileDialog(obsFilters.values(), obsFilters.get("obs"));
+				break;
 			case GUIMultiModelHandler.LABELS_EXPORT:
 				res = showSaveFileDialog(labFilters.values(), labFilters.get("lab"));
 				break;
@@ -500,7 +507,7 @@ public class GUIMultiModel extends GUIPlugin implements PrismSettingsListener
 		};
 		newPRISMModel.putValue(Action.LONG_DESCRIPTION, "Removes the current build, and loads a new model editor in PRISM Text Model mode.");
 		//newPRISMModel.putValue(Action.SHORT_DESCRIPTION, "New PRISM Text Model");
-		newPRISMModel.putValue(Action.MNEMONIC_KEY, new Integer(KeyEvent.VK_P));
+		newPRISMModel.putValue(Action.MNEMONIC_KEY, Integer.valueOf(KeyEvent.VK_P));
 		newPRISMModel.putValue(Action.NAME, "PRISM model");
 		newPRISMModel.putValue(Action.SMALL_ICON, GUIPrism.getIconFromImage("smallFilePrism.png"));
 		newPRISMModel.putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_N, Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));
@@ -515,7 +522,7 @@ public class GUIMultiModel extends GUIPlugin implements PrismSettingsListener
 		};
 		newPEPAModel.putValue(Action.LONG_DESCRIPTION, "Removes the current build, and loads a new model editor in PEPA Text Model mode.");
 		//newPEPAModel.putValue(Action.SHORT_DESCRIPTION, "New PEPA Text Model");
-		newPEPAModel.putValue(Action.MNEMONIC_KEY, new Integer(KeyEvent.VK_E));
+		newPEPAModel.putValue(Action.MNEMONIC_KEY, Integer.valueOf(KeyEvent.VK_E));
 		newPEPAModel.putValue(Action.NAME, "PEPA model");
 		newPEPAModel.putValue(Action.SMALL_ICON, GUIPrism.getIconFromImage("smallFilePepa.png"));
 
@@ -534,7 +541,7 @@ public class GUIMultiModel extends GUIPlugin implements PrismSettingsListener
 						Action.LONG_DESCRIPTION,
 						"Brings up a file loading dialogue and loads the file into the editor.  The editor will change mode according to the format of the file.  The loaded file is active for saving.");
 		//loadModel.putValue(Action.SHORT_DESCRIPTION, "Open Model");
-		loadModel.putValue(Action.MNEMONIC_KEY, new Integer(KeyEvent.VK_O));
+		loadModel.putValue(Action.MNEMONIC_KEY, Integer.valueOf(KeyEvent.VK_O));
 		loadModel.putValue(Action.NAME, "Open model...");
 		//loadModel.putValue(Action.ACTION_COMMAND_KEY,
 		loadModel.putValue(Action.SMALL_ICON, GUIPrism.getIconFromImage("smallOpen.png"));
@@ -549,7 +556,7 @@ public class GUIMultiModel extends GUIPlugin implements PrismSettingsListener
 		};
 		reloadModel.putValue(Action.LONG_DESCRIPTION, "Reloads the current active file.");
 		//reloadModel.putValue(Action.SHORT_DESCRIPTION, "Reload Model");
-		reloadModel.putValue(Action.MNEMONIC_KEY, new Integer(KeyEvent.VK_R));
+		reloadModel.putValue(Action.MNEMONIC_KEY, Integer.valueOf(KeyEvent.VK_R));
 		reloadModel.putValue(Action.NAME, "Reload model");
 		//loadModel.putValue(Action.ACTION_COMMAND_KEY,
 		reloadModel.putValue(Action.SMALL_ICON, GUIPrism.getIconFromImage("smallReload.png"));
@@ -565,7 +572,7 @@ public class GUIMultiModel extends GUIPlugin implements PrismSettingsListener
 		saveModel.putValue(Action.LONG_DESCRIPTION,
 				"Brings up a file saving dialogue and saves the current text editor to the active file or to a new file.  The saved file becomes active");
 		//saveModel.putValue(Action.SHORT_DESCRIPTION, "Save Model");
-		saveModel.putValue(Action.MNEMONIC_KEY, new Integer(KeyEvent.VK_S));
+		saveModel.putValue(Action.MNEMONIC_KEY, Integer.valueOf(KeyEvent.VK_S));
 		saveModel.putValue(Action.NAME, "Save model");
 		saveModel.putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_S, Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));
 		//saveModel.putValue(Action.ACTION_COMMAND_KEY,
@@ -581,7 +588,7 @@ public class GUIMultiModel extends GUIPlugin implements PrismSettingsListener
 		saveAsModel.putValue(Action.LONG_DESCRIPTION,
 				"Brings up a file saving dialogue and saves the current text editor to a new file.  The saved file becomes active");
 		//saveAsModel.putValue(Action.SHORT_DESCRIPTION, "Save Model As...");
-		saveAsModel.putValue(Action.MNEMONIC_KEY, new Integer(KeyEvent.VK_A));
+		saveAsModel.putValue(Action.MNEMONIC_KEY, Integer.valueOf(KeyEvent.VK_A));
 		saveAsModel.putValue(Action.NAME, "Save model as...");
 		//saveAsModel.putValue(Action.ACTION_COMMAND_KEY,
 		saveAsModel.putValue(Action.SMALL_ICON, GUIPrism.getIconFromImage("smallSaveAs.png"));
@@ -595,7 +602,7 @@ public class GUIMultiModel extends GUIPlugin implements PrismSettingsListener
 		};
 		parseModel.putValue(Action.LONG_DESCRIPTION, "Forces a parse of the model in the editor.  The parsed description is shown in the model tree.");
 		//parseModel.putValue(Action.SHORT_DESCRIPTION, "Parse Model");
-		parseModel.putValue(Action.MNEMONIC_KEY, new Integer(KeyEvent.VK_P));
+		parseModel.putValue(Action.MNEMONIC_KEY, Integer.valueOf(KeyEvent.VK_P));
 		parseModel.putValue(Action.NAME, "Parse model");
 		parseModel.putValue(Action.SMALL_ICON, GUIPrism.getIconFromImage("smallParse.png"));
 		parseModel.putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_F2, 0));
@@ -608,7 +615,7 @@ public class GUIMultiModel extends GUIPlugin implements PrismSettingsListener
 		};
 		buildModel.putValue(Action.LONG_DESCRIPTION, "Builds the model that has been parsed.");
 		//buildModel.putValue(Action.SHORT_DESCRIPTION, "Build Model");
-		buildModel.putValue(Action.MNEMONIC_KEY, new Integer(KeyEvent.VK_B));
+		buildModel.putValue(Action.MNEMONIC_KEY, Integer.valueOf(KeyEvent.VK_B));
 		buildModel.putValue(Action.NAME, "Build model");
 		buildModel.putValue(Action.SMALL_ICON, GUIPrism.getIconFromImage("smallBuild.png"));
 		buildModel.putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_F3, 0));
@@ -621,7 +628,7 @@ public class GUIMultiModel extends GUIPlugin implements PrismSettingsListener
 			}
 		};
 		exportStatesPlain.putValue(Action.LONG_DESCRIPTION, "Exports the reachable states to a plain text file");
-		exportStatesPlain.putValue(Action.MNEMONIC_KEY, new Integer(KeyEvent.VK_P));
+		exportStatesPlain.putValue(Action.MNEMONIC_KEY, Integer.valueOf(KeyEvent.VK_P));
 		exportStatesPlain.putValue(Action.NAME, "Plain text file");
 		exportStatesPlain.putValue(Action.SMALL_ICON, GUIPrism.getIconFromImage("smallFileText.png"));
 
@@ -633,7 +640,7 @@ public class GUIMultiModel extends GUIPlugin implements PrismSettingsListener
 			}
 		};
 		exportStatesMatlab.putValue(Action.LONG_DESCRIPTION, "Exports the reachable states to a Matlab file");
-		exportStatesMatlab.putValue(Action.MNEMONIC_KEY, new Integer(KeyEvent.VK_M));
+		exportStatesMatlab.putValue(Action.MNEMONIC_KEY, Integer.valueOf(KeyEvent.VK_M));
 		exportStatesMatlab.putValue(Action.NAME, "Matlab file");
 		exportStatesMatlab.putValue(Action.SMALL_ICON, GUIPrism.getIconFromImage("smallFileMatlab.png"));
 
@@ -645,7 +652,7 @@ public class GUIMultiModel extends GUIPlugin implements PrismSettingsListener
 			}
 		};
 		exportTransPlain.putValue(Action.LONG_DESCRIPTION, "Exports the transition matrix to a plain text file");
-		exportTransPlain.putValue(Action.MNEMONIC_KEY, new Integer(KeyEvent.VK_P));
+		exportTransPlain.putValue(Action.MNEMONIC_KEY, Integer.valueOf(KeyEvent.VK_P));
 		exportTransPlain.putValue(Action.NAME, "Plain text file");
 		exportTransPlain.putValue(Action.SMALL_ICON, GUIPrism.getIconFromImage("smallFileText.png"));
 
@@ -657,7 +664,7 @@ public class GUIMultiModel extends GUIPlugin implements PrismSettingsListener
 			}
 		};
 		exportTransMatlab.putValue(Action.LONG_DESCRIPTION, "Exports the transition matrix to a Matlab file");
-		exportTransMatlab.putValue(Action.MNEMONIC_KEY, new Integer(KeyEvent.VK_M));
+		exportTransMatlab.putValue(Action.MNEMONIC_KEY, Integer.valueOf(KeyEvent.VK_M));
 		exportTransMatlab.putValue(Action.NAME, "Matlab file");
 		exportTransMatlab.putValue(Action.SMALL_ICON, GUIPrism.getIconFromImage("smallFileMatlab.png"));
 
@@ -669,7 +676,7 @@ public class GUIMultiModel extends GUIPlugin implements PrismSettingsListener
 			}
 		};
 		exportTransDot.putValue(Action.LONG_DESCRIPTION, "Exports the transition matrix graph to a Dot file");
-		exportTransDot.putValue(Action.MNEMONIC_KEY, new Integer(KeyEvent.VK_D));
+		exportTransDot.putValue(Action.MNEMONIC_KEY, Integer.valueOf(KeyEvent.VK_D));
 		exportTransDot.putValue(Action.NAME, "Dot file");
 		exportTransDot.putValue(Action.SMALL_ICON, GUIPrism.getIconFromImage("smallFileDot.png"));
 
@@ -681,7 +688,7 @@ public class GUIMultiModel extends GUIPlugin implements PrismSettingsListener
 			}
 		};
 		exportTransDotStates.putValue(Action.LONG_DESCRIPTION, "Exports the transition matrix graph to a Dot file (with states)");
-		exportTransDotStates.putValue(Action.MNEMONIC_KEY, new Integer(KeyEvent.VK_S));
+		exportTransDotStates.putValue(Action.MNEMONIC_KEY, Integer.valueOf(KeyEvent.VK_S));
 		exportTransDotStates.putValue(Action.NAME, "Dot file (with states)");
 		exportTransDotStates.putValue(Action.SMALL_ICON, GUIPrism.getIconFromImage("smallFileDot.png"));
 
@@ -693,9 +700,33 @@ public class GUIMultiModel extends GUIPlugin implements PrismSettingsListener
 			}
 		};
 		exportTransMRMC.putValue(Action.LONG_DESCRIPTION, "Exports the transition matrix to a MRMC file");
-		exportTransMRMC.putValue(Action.MNEMONIC_KEY, new Integer(KeyEvent.VK_R));
+		exportTransMRMC.putValue(Action.MNEMONIC_KEY, Integer.valueOf(KeyEvent.VK_R));
 		exportTransMRMC.putValue(Action.NAME, "MRMC file");
 		exportTransMRMC.putValue(Action.SMALL_ICON, GUIPrism.getIconFromImage("smallFileText.png"));
+
+		exportObsPlain = new AbstractAction()
+		{
+			public void actionPerformed(ActionEvent e)
+			{
+				a_exportBuildAs(GUIMultiModelHandler.OBSERVATIONS_EXPORT, Prism.EXPORT_PLAIN);
+			}
+		};
+		exportObsPlain.putValue(Action.LONG_DESCRIPTION, "Exports the observations to a plain text file");
+		exportObsPlain.putValue(Action.MNEMONIC_KEY, Integer.valueOf(KeyEvent.VK_P));
+		exportObsPlain.putValue(Action.NAME, "Plain text file");
+		exportObsPlain.putValue(Action.SMALL_ICON, GUIPrism.getIconFromImage("smallFileText.png"));
+
+		exportObsMatlab = new AbstractAction()
+		{
+			public void actionPerformed(ActionEvent e)
+			{
+				a_exportBuildAs(GUIMultiModelHandler.OBSERVATIONS_EXPORT, Prism.EXPORT_MATLAB);
+			}
+		};
+		exportObsMatlab.putValue(Action.LONG_DESCRIPTION, "Exports the observations to a Matlab file");
+		exportObsMatlab.putValue(Action.MNEMONIC_KEY, Integer.valueOf(KeyEvent.VK_M));
+		exportObsMatlab.putValue(Action.NAME, "Matlab file");
+		exportObsMatlab.putValue(Action.SMALL_ICON, GUIPrism.getIconFromImage("smallFileMatlab.png"));
 
 		exportStateRewardsPlain = new AbstractAction()
 		{
@@ -705,7 +736,7 @@ public class GUIMultiModel extends GUIPlugin implements PrismSettingsListener
 			}
 		};
 		exportStateRewardsPlain.putValue(Action.LONG_DESCRIPTION, "Exports the state rewards vector to a plain text file");
-		exportStateRewardsPlain.putValue(Action.MNEMONIC_KEY, new Integer(KeyEvent.VK_P));
+		exportStateRewardsPlain.putValue(Action.MNEMONIC_KEY, Integer.valueOf(KeyEvent.VK_P));
 		exportStateRewardsPlain.putValue(Action.NAME, "Plain text file");
 		exportStateRewardsPlain.putValue(Action.SMALL_ICON, GUIPrism.getIconFromImage("smallFileText.png"));
 
@@ -717,7 +748,7 @@ public class GUIMultiModel extends GUIPlugin implements PrismSettingsListener
 			}
 		};
 		exportStateRewardsMatlab.putValue(Action.LONG_DESCRIPTION, "Exports the state rewards vector to a Matlab file");
-		exportStateRewardsMatlab.putValue(Action.MNEMONIC_KEY, new Integer(KeyEvent.VK_M));
+		exportStateRewardsMatlab.putValue(Action.MNEMONIC_KEY, Integer.valueOf(KeyEvent.VK_M));
 		exportStateRewardsMatlab.putValue(Action.NAME, "Matlab file");
 		exportStateRewardsMatlab.putValue(Action.SMALL_ICON, GUIPrism.getIconFromImage("smallFileMatlab.png"));
 
@@ -729,7 +760,7 @@ public class GUIMultiModel extends GUIPlugin implements PrismSettingsListener
 			}
 		};
 		exportStateRewardsMRMC.putValue(Action.LONG_DESCRIPTION, "Exports the state rewards vector graph to a MRMC file");
-		exportStateRewardsMRMC.putValue(Action.MNEMONIC_KEY, new Integer(KeyEvent.VK_R));
+		exportStateRewardsMRMC.putValue(Action.MNEMONIC_KEY, Integer.valueOf(KeyEvent.VK_R));
 		exportStateRewardsMRMC.putValue(Action.NAME, "MRMC file");
 		exportStateRewardsMRMC.putValue(Action.SMALL_ICON, GUIPrism.getIconFromImage("smallFileText.png"));
 
@@ -741,7 +772,7 @@ public class GUIMultiModel extends GUIPlugin implements PrismSettingsListener
 			}
 		};
 		exportTransRewardsPlain.putValue(Action.LONG_DESCRIPTION, "Exports the transition rewards matrix to a plain text file");
-		exportTransRewardsPlain.putValue(Action.MNEMONIC_KEY, new Integer(KeyEvent.VK_P));
+		exportTransRewardsPlain.putValue(Action.MNEMONIC_KEY, Integer.valueOf(KeyEvent.VK_P));
 		exportTransRewardsPlain.putValue(Action.NAME, "Plain text file");
 		exportTransRewardsPlain.putValue(Action.SMALL_ICON, GUIPrism.getIconFromImage("smallFileText.png"));
 
@@ -753,7 +784,7 @@ public class GUIMultiModel extends GUIPlugin implements PrismSettingsListener
 			}
 		};
 		exportTransRewardsMatlab.putValue(Action.LONG_DESCRIPTION, "Exports the transition rewards matrix to a Matlab file");
-		exportTransRewardsMatlab.putValue(Action.MNEMONIC_KEY, new Integer(KeyEvent.VK_M));
+		exportTransRewardsMatlab.putValue(Action.MNEMONIC_KEY, Integer.valueOf(KeyEvent.VK_M));
 		exportTransRewardsMatlab.putValue(Action.NAME, "Matlab file");
 		exportTransRewardsMatlab.putValue(Action.SMALL_ICON, GUIPrism.getIconFromImage("smallFileMatlab.png"));
 
@@ -765,7 +796,7 @@ public class GUIMultiModel extends GUIPlugin implements PrismSettingsListener
 			}
 		};
 		exportTransRewardsMRMC.putValue(Action.LONG_DESCRIPTION, "Exports the transition rewards matrix to a MRMC file");
-		exportTransRewardsMRMC.putValue(Action.MNEMONIC_KEY, new Integer(KeyEvent.VK_R));
+		exportTransRewardsMRMC.putValue(Action.MNEMONIC_KEY, Integer.valueOf(KeyEvent.VK_R));
 		exportTransRewardsMRMC.putValue(Action.NAME, "MRMC file");
 		exportTransRewardsMRMC.putValue(Action.SMALL_ICON, GUIPrism.getIconFromImage("smallFileText.png"));
 
@@ -777,7 +808,7 @@ public class GUIMultiModel extends GUIPlugin implements PrismSettingsListener
 			}
 		};
 		exportLabelsPlain.putValue(Action.LONG_DESCRIPTION, "Exports the model's labels and their satisfying states to a plain text file");
-		exportLabelsPlain.putValue(Action.MNEMONIC_KEY, new Integer(KeyEvent.VK_P));
+		exportLabelsPlain.putValue(Action.MNEMONIC_KEY, Integer.valueOf(KeyEvent.VK_P));
 		exportLabelsPlain.putValue(Action.NAME, "Plain text file");
 		exportLabelsPlain.putValue(Action.SMALL_ICON, GUIPrism.getIconFromImage("smallFileText.png"));
 
@@ -789,7 +820,7 @@ public class GUIMultiModel extends GUIPlugin implements PrismSettingsListener
 			}
 		};
 		exportLabelsMatlab.putValue(Action.LONG_DESCRIPTION, "Exports the model's labels and their satisfying states to a Matlab file");
-		exportLabelsMatlab.putValue(Action.MNEMONIC_KEY, new Integer(KeyEvent.VK_M));
+		exportLabelsMatlab.putValue(Action.MNEMONIC_KEY, Integer.valueOf(KeyEvent.VK_M));
 		exportLabelsMatlab.putValue(Action.NAME, "Matlab file");
 		exportLabelsMatlab.putValue(Action.SMALL_ICON, GUIPrism.getIconFromImage("smallFileMatlab.png"));
 
@@ -802,7 +833,7 @@ public class GUIMultiModel extends GUIPlugin implements PrismSettingsListener
 		};
 		computeSS.putValue(Action.LONG_DESCRIPTION, "Computes steady-state probabilities for the model");
 		//computeSS.putValue(Action.SHORT_DESCRIPTION, "Compute steady-state probabilities");
-		computeSS.putValue(Action.MNEMONIC_KEY, new Integer(KeyEvent.VK_S));
+		computeSS.putValue(Action.MNEMONIC_KEY, Integer.valueOf(KeyEvent.VK_S));
 		computeSS.putValue(Action.NAME, "Steady-state probabilities");
 		computeSS.putValue(Action.SMALL_ICON, GUIPrism.getIconFromImage("smallSteadyState.png"));
 		computeSS.putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_F4, 0));
@@ -816,7 +847,7 @@ public class GUIMultiModel extends GUIPlugin implements PrismSettingsListener
 		};
 		computeTr.putValue(Action.LONG_DESCRIPTION, "Computes transient probabilities for the model");
 		//computeTr.putValue(Action.SHORT_DESCRIPTION, "Compute transient probabilities");
-		computeTr.putValue(Action.MNEMONIC_KEY, new Integer(KeyEvent.VK_T));
+		computeTr.putValue(Action.MNEMONIC_KEY, Integer.valueOf(KeyEvent.VK_T));
 		computeTr.putValue(Action.NAME, "Transient probabilities");
 		computeTr.putValue(Action.SMALL_ICON, GUIPrism.getIconFromImage("smallClockAnim1.png"));
 		computeTr.putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_F4, KeyEvent.CTRL_DOWN_MASK));
@@ -829,7 +860,7 @@ public class GUIMultiModel extends GUIPlugin implements PrismSettingsListener
 			}
 		};
 		exportSSPlain.putValue(Action.LONG_DESCRIPTION, "Exports the steady-state probabilities to a plain text file");
-		exportSSPlain.putValue(Action.MNEMONIC_KEY, new Integer(KeyEvent.VK_P));
+		exportSSPlain.putValue(Action.MNEMONIC_KEY, Integer.valueOf(KeyEvent.VK_P));
 		exportSSPlain.putValue(Action.NAME, "Plain text file");
 		exportSSPlain.putValue(Action.SMALL_ICON, GUIPrism.getIconFromImage("smallFileText.png"));
 
@@ -841,7 +872,7 @@ public class GUIMultiModel extends GUIPlugin implements PrismSettingsListener
 			}
 		};
 		exportSSMatlab.putValue(Action.LONG_DESCRIPTION, "Exports the steady-state probabilities to a Matlab file");
-		exportSSMatlab.putValue(Action.MNEMONIC_KEY, new Integer(KeyEvent.VK_M));
+		exportSSMatlab.putValue(Action.MNEMONIC_KEY, Integer.valueOf(KeyEvent.VK_M));
 		exportSSMatlab.putValue(Action.NAME, "Matlab file");
 		exportSSMatlab.putValue(Action.SMALL_ICON, GUIPrism.getIconFromImage("smallFileMatlab.png"));
 
@@ -853,7 +884,7 @@ public class GUIMultiModel extends GUIPlugin implements PrismSettingsListener
 			}
 		};
 		exportTrPlain.putValue(Action.LONG_DESCRIPTION, "Exports the transient probabilities to a plain text file");
-		exportTrPlain.putValue(Action.MNEMONIC_KEY, new Integer(KeyEvent.VK_P));
+		exportTrPlain.putValue(Action.MNEMONIC_KEY, Integer.valueOf(KeyEvent.VK_P));
 		exportTrPlain.putValue(Action.NAME, "Plain text file");
 		exportTrPlain.putValue(Action.SMALL_ICON, GUIPrism.getIconFromImage("smallFileText.png"));
 
@@ -865,7 +896,7 @@ public class GUIMultiModel extends GUIPlugin implements PrismSettingsListener
 			}
 		};
 		exportTrMatlab.putValue(Action.LONG_DESCRIPTION, "Exports the transient probabilities to a Matlab file");
-		exportTrMatlab.putValue(Action.MNEMONIC_KEY, new Integer(KeyEvent.VK_M));
+		exportTrMatlab.putValue(Action.MNEMONIC_KEY, Integer.valueOf(KeyEvent.VK_M));
 		exportTrMatlab.putValue(Action.NAME, "Matlab file");
 		exportTrMatlab.putValue(Action.SMALL_ICON, GUIPrism.getIconFromImage("smallFileMatlab.png"));
 
@@ -877,7 +908,7 @@ public class GUIMultiModel extends GUIPlugin implements PrismSettingsListener
 			}
 		};
 		viewStates.putValue(Action.LONG_DESCRIPTION, "Print the reachable states to the log");
-		viewStates.putValue(Action.MNEMONIC_KEY, new Integer(KeyEvent.VK_S));
+		viewStates.putValue(Action.MNEMONIC_KEY, Integer.valueOf(KeyEvent.VK_S));
 		viewStates.putValue(Action.NAME, "States");
 		viewStates.putValue(Action.SMALL_ICON, GUIPrism.getIconFromImage("smallStates.png"));
 
@@ -889,9 +920,21 @@ public class GUIMultiModel extends GUIPlugin implements PrismSettingsListener
 			}
 		};
 		viewTrans.putValue(Action.LONG_DESCRIPTION, "Print the transition matrix to the log");
-		viewTrans.putValue(Action.MNEMONIC_KEY, new Integer(KeyEvent.VK_T));
+		viewTrans.putValue(Action.MNEMONIC_KEY, Integer.valueOf(KeyEvent.VK_T));
 		viewTrans.putValue(Action.NAME, "Transition matrix");
 		viewTrans.putValue(Action.SMALL_ICON, GUIPrism.getIconFromImage("smallMatrix.png"));
+
+		viewObs = new AbstractAction()
+		{
+			public void actionPerformed(ActionEvent e)
+			{
+				a_viewBuild(GUIMultiModelHandler.OBSERVATIONS_EXPORT, Prism.EXPORT_PLAIN);
+			}
+		};
+		viewObs.putValue(Action.LONG_DESCRIPTION, "Print the observations to the log");
+		viewObs.putValue(Action.MNEMONIC_KEY, Integer.valueOf(KeyEvent.VK_S));
+		viewObs.putValue(Action.NAME, "Observations");
+		viewObs.putValue(Action.SMALL_ICON, GUIPrism.getIconFromImage("smallStates.png"));
 
 		viewStateRewards = new AbstractAction()
 		{
@@ -901,7 +944,7 @@ public class GUIMultiModel extends GUIPlugin implements PrismSettingsListener
 			}
 		};
 		viewStateRewards.putValue(Action.LONG_DESCRIPTION, "Print the state rewards to the log");
-		viewStateRewards.putValue(Action.MNEMONIC_KEY, new Integer(KeyEvent.VK_R));
+		viewStateRewards.putValue(Action.MNEMONIC_KEY, Integer.valueOf(KeyEvent.VK_R));
 		viewStateRewards.putValue(Action.NAME, "State rewards");
 		viewStateRewards.putValue(Action.SMALL_ICON, GUIPrism.getIconFromImage("smallStates.png"));
 
@@ -913,7 +956,7 @@ public class GUIMultiModel extends GUIPlugin implements PrismSettingsListener
 			}
 		};
 		viewTransRewards.putValue(Action.LONG_DESCRIPTION, "Print the transition rewards to the log");
-		viewTransRewards.putValue(Action.MNEMONIC_KEY, new Integer(KeyEvent.VK_E));
+		viewTransRewards.putValue(Action.MNEMONIC_KEY, Integer.valueOf(KeyEvent.VK_E));
 		viewTransRewards.putValue(Action.NAME, "Transition rewards");
 		viewTransRewards.putValue(Action.SMALL_ICON, GUIPrism.getIconFromImage("smallMatrix.png"));
 
@@ -925,7 +968,7 @@ public class GUIMultiModel extends GUIPlugin implements PrismSettingsListener
 			}
 		};
 		viewLabels.putValue(Action.LONG_DESCRIPTION, "Print the labels and satisfying states to the log");
-		viewLabels.putValue(Action.MNEMONIC_KEY, new Integer(KeyEvent.VK_L));
+		viewLabels.putValue(Action.MNEMONIC_KEY, Integer.valueOf(KeyEvent.VK_L));
 		viewLabels.putValue(Action.NAME, "Labels");
 		viewLabels.putValue(Action.SMALL_ICON, GUIPrism.getIconFromImage("smallStates.png"));
 
@@ -937,7 +980,7 @@ public class GUIMultiModel extends GUIPlugin implements PrismSettingsListener
 			}
 		};
 		viewPrismCode.putValue(Action.LONG_DESCRIPTION, "This shows the parsed model in a text editor.");
-		viewPrismCode.putValue(Action.MNEMONIC_KEY, new Integer(KeyEvent.VK_V));
+		viewPrismCode.putValue(Action.MNEMONIC_KEY, Integer.valueOf(KeyEvent.VK_V));
 		viewPrismCode.putValue(Action.NAME, "Parsed PRISM model");
 		viewPrismCode.putValue(Action.SMALL_ICON, GUIPrism.getIconFromImage("smallFilePrism.png"));
 	}
@@ -1052,6 +1095,12 @@ public class GUIMultiModel extends GUIPlugin implements PrismSettingsListener
 		exportTransMenu.add(exportTransDotStates);
 		exportTransMenu.add(exportTransMRMC);
 		exportMenu.add(exportTransMenu);
+		exportObsMenu = new JMenu("Observations");
+		exportObsMenu.setMnemonic('O');
+		exportObsMenu.setIcon(GUIPrism.getIconFromImage("smallStates.png"));
+		exportObsMenu.add(exportObsPlain);
+		exportObsMenu.add(exportObsMatlab);
+		exportMenu.add(exportObsMenu);
 		exportStateRewardsMenu = new JMenu("State rewards");
 		exportStateRewardsMenu.setMnemonic('R');
 		exportStateRewardsMenu.setIcon(GUIPrism.getIconFromImage("smallStates.png"));
@@ -1082,6 +1131,7 @@ public class GUIMultiModel extends GUIPlugin implements PrismSettingsListener
 		viewMenu.setIcon(GUIPrism.getIconFromImage("smallView.png"));
 		viewMenu.add(viewStates);
 		viewMenu.add(viewTrans);
+		viewMenu.add(viewObs);
 		viewMenu.add(viewStateRewards);
 		viewMenu.add(viewTransRewards);
 		viewMenu.add(viewLabels);
@@ -1187,6 +1237,9 @@ public class GUIMultiModel extends GUIPlugin implements PrismSettingsListener
 		staFilters = new HashMap<String,FileFilter>();
 		staFilters.put("sta", new FileNameExtensionFilter("State list files (*.sta)", "sta"));
 		staFilters.put("txt", new FileNameExtensionFilter("Plain text files (*.txt)", "txt"));
+		obsFilters = new HashMap<String,FileFilter>();
+		obsFilters.put("obs", new FileNameExtensionFilter("Observations files (*.obs)", "obs"));
+		obsFilters.put("txt", new FileNameExtensionFilter("Plain text files (*.txt)", "txt"));
 		traFilters = new HashMap<String,FileFilter>();
 		traFilters.put("tra", new FileNameExtensionFilter("Transition matrix files (*.tra)", "tra"));
 		traFilters.put("txt", new FileNameExtensionFilter("Plain text files (*.txt)", "txt"));

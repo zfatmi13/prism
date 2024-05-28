@@ -814,23 +814,26 @@ public class ProbModel implements Model
 
 	// export transition matrix to a file
 
-	public void exportToFile(int exportType, boolean explicit, File file) throws FileNotFoundException, PrismException
+	public void exportToFile(int exportType, boolean explicit, File file, int precision) throws FileNotFoundException, PrismException
 	{
 		if (!explicit) {
-			PrismMTBDD.ExportMatrix(trans, getTransSymbol(), allDDRowVars, allDDColVars, odd, exportType, (file != null) ? file.getPath() : null);
+			PrismMTBDD.ExportMatrix(trans, getTransSymbol(), allDDRowVars, allDDColVars, odd, exportType, (file != null) ? file.getPath() : null, precision, null, true);
 		} else {
-			PrismSparse.ExportMatrix(trans, getTransSymbol(), allDDRowVars, allDDColVars, odd, exportType, (file != null) ? file.getPath() : null);
+			PrismSparse.ExportMatrix(trans, getTransSymbol(), allDDRowVars, allDDColVars, odd, exportType, (file != null) ? file.getPath() : null, precision, null, true);
 		}
 	}
 
 	@Override
-	public void exportStateRewardsToFile(int r, int exportType, File file) throws FileNotFoundException, PrismException
+	public void exportStateRewardsToFile(int r, int exportType, File file, int precision, boolean noexportheaders)
+			throws FileNotFoundException, PrismException
 	{
-		PrismMTBDD.ExportVector(stateRewards[r], "c" + (r + 1), allDDRowVars, odd, exportType, (file == null) ? null : file.getPath());
+		PrismMTBDD.ExportVector(stateRewards[r], "c" + (r + 1), allDDRowVars, odd, exportType, (file == null) ? null : file.getPath(), precision,
+				rewardStructNames[r], noexportheaders);
 	}
 
 	@Deprecated
-	public String exportStateRewardsToFile(int exportType, File file) throws FileNotFoundException, PrismException
+	@Override
+	public String exportStateRewardsToFile(int exportType, File file, int precision) throws FileNotFoundException, PrismException
 	{
 		// export state rewards vector to a file
 		// returns string containing files used if there were more than 1, null otherwise
@@ -845,23 +848,23 @@ public class ProbModel implements Model
 				filename = PrismUtils.addCounterSuffixToFilename(filename, i + 1);
 				allFilenames += ((i > 0) ? ", " : "") + filename;
 			}
-			PrismMTBDD.ExportVector(stateRewards[i], "c" + (i + 1), allDDRowVars, odd, exportType, filename);
+			PrismMTBDD.ExportVector(stateRewards[i], "c" + (i + 1), allDDRowVars, odd, exportType, filename, precision, rewardStructNames[i], false);
 		}
 		return (allFilenames.length() > 0) ? allFilenames : null;
 	}
 
 	@Override
-	public void exportTransRewardsToFile(int r, int exportType, boolean ordered, File file) throws FileNotFoundException, PrismException
+	public void exportTransRewardsToFile(int r, int exportType, boolean ordered, File file, int precision, boolean noexportheaders) throws FileNotFoundException, PrismException
 	{
 		if (!ordered) {
-			PrismMTBDD.ExportMatrix(transRewards[r], "C" + (r + 1), allDDRowVars, allDDColVars, odd, exportType, (file == null) ? null : file.getPath());
+			PrismMTBDD.ExportMatrix(transRewards[r], "C" + (r + 1), allDDRowVars, allDDColVars, odd, exportType, (file == null) ? null : file.getPath(), precision, rewardStructNames[r], noexportheaders);
 		} else {
-			PrismSparse.ExportMatrix(transRewards[r], "C" + (r + 1), allDDRowVars, allDDColVars, odd, exportType, (file == null) ? null : file.getPath());
+			PrismSparse.ExportMatrix(transRewards[r], "C" + (r + 1), allDDRowVars, allDDColVars, odd, exportType, (file == null) ? null : file.getPath(), precision, rewardStructNames[r], noexportheaders);
 		}
 	}
 
 	@Deprecated
-	public String exportTransRewardsToFile(int exportType, boolean explicit, File file) throws FileNotFoundException, PrismException
+	public String exportTransRewardsToFile(int exportType, boolean explicit, File file, int precision) throws FileNotFoundException, PrismException
 	{
 		// export transition rewards matrix to a file
 		// returns string containing files used if there were more than 1, null otherwise
@@ -877,9 +880,9 @@ public class ProbModel implements Model
 				allFilenames += ((i > 0) ? ", " : "") + filename;
 			}
 			if (!explicit) {
-				PrismMTBDD.ExportMatrix(transRewards[i], "C" + (i + 1), allDDRowVars, allDDColVars, odd, exportType, filename);
+				PrismMTBDD.ExportMatrix(transRewards[i], "C" + (i + 1), allDDRowVars, allDDColVars, odd, exportType, filename, precision, rewardStructNames[i], false);
 			} else {
-				PrismSparse.ExportMatrix(transRewards[i], "C" + (i + 1), allDDRowVars, allDDColVars, odd, exportType, filename);
+				PrismSparse.ExportMatrix(transRewards[i], "C" + (i + 1), allDDRowVars, allDDColVars, odd, exportType, filename, precision, rewardStructNames[i], false);
 			}
 		}
 		return (allFilenames.length() > 0) ? allFilenames : null;
@@ -971,7 +974,7 @@ public class ProbModel implements Model
 
 		// Create a (new, unique) name for the variable that will represent the extra states
 		extraVar = transformation.getExtraStateVariableName();
-		while (varList.getIndex(extraVar) != -1) {
+		while (varList.exists(extraVar)) {
 			extraVar = "_" + extraVar;
 		}
 
@@ -1026,7 +1029,11 @@ public class ProbModel implements Model
 			}
 			newVarList = (VarList) varList.clone();
 			Declaration decl = new Declaration(extraVar, new DeclarationInt(Expression.Int(0), Expression.Int((1 << n) - 1)));
-			newVarList.addVar(before ? 0 : varList.getNumVars(), decl, 1, this.getConstantValues());
+			if (before) {
+				newVarList.addVarAtStart(decl, 1);
+			} else {
+				newVarList.addVar(decl, 1);
+			}
 		}
 
 		// Build transition matrix for transformed model
@@ -1122,13 +1129,28 @@ public class ProbModel implements Model
 	}
 
 	/**
-	 * Convert a BDD (over model row variables) representing a single state to a State object. 
+	 * Convert a BDD (over model row variables) representing a single state to a State object.
+	 * <br>[ REFS: <i>none</i>, DEREFS: <i>none</i> ]
 	 */
 	public State convertBddToState(JDDNode dd)
+	{
+		return convertBddToState(dd, allDDRowVars, varList);
+	}
+
+	/**
+	 * Convert a BDD (over the given row variables, encoding variables according to the varList)
+	 * representing a single state to a State object.
+	 * @param dd 0/1-MTBDD, representing a single state
+	 * @param allDDRowVars the list of row variables
+	 * @param varList the VarList, specifying the encoding of the individual state variables
+	 * <br>[ REFS: <i>none</i>, DEREFS: <i>none</i> ]
+	 */
+	public static State convertBddToState(JDDNode dd, JDDVars allDDRowVars, VarList varList)
 	{
 		JDDNode ptr;
 		int i, n;
 		BitSet bits;
+
 		// First convert path through BDD to a bit vector
 		ptr = dd;
 		n = allDDRowVars.n();

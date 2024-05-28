@@ -2,7 +2,7 @@
 //	
 //	Copyright (c) 2016-
 //	Authors:
-//	* Steffen Maercker <maercker@tcs.inf.tu-dresden.de> (TU Dresden)
+//	* Steffen Maercker <steffen.maercker@tu-dresden.de> (TU Dresden)
 //	* Joachim Klein <klein@tcs.inf.tu-dresden.de> (TU Dresden)
 //	
 //------------------------------------------------------------------------------
@@ -31,10 +31,10 @@ import java.util.BitSet;
 import java.util.List;
 import java.util.PrimitiveIterator.OfInt;
 
+import common.iterable.FilteringIterable;
+import common.iterable.FunctionalPrimitiveIterable;
 import common.IterableBitSet;
 import common.IterableStateSet;
-import common.iterable.FilteringIterable;
-import common.iterable.IterableInt;
 import explicit.Model;
 import explicit.PredecessorRelation;
 import explicit.StateValues;
@@ -49,7 +49,7 @@ import prism.PrismLog;
  * Base class for an DTMCView or MDPView,
  * handling common tasks.
  */
-public abstract class ModelView implements Model
+public abstract class ModelView<Value> implements Model<Value>
 {
 	protected BitSet deadlockStates = new BitSet();
 	protected boolean fixedDeadlocks = false;
@@ -61,7 +61,7 @@ public abstract class ModelView implements Model
 	{
 	}
 
-	public ModelView(final ModelView model)
+	public ModelView(final ModelView<Value> model)
 	{
 		deadlockStates = (BitSet) model.deadlockStates.clone();
 		fixedDeadlocks = model.fixedDeadlocks;
@@ -78,7 +78,7 @@ public abstract class ModelView implements Model
 	}
 
 	@Override
-	public IterableInt getDeadlockStates()
+	public FunctionalPrimitiveIterable.OfInt getDeadlockStates()
 	{
 		return new IterableBitSet(deadlockStates);
 	}
@@ -115,9 +115,9 @@ public abstract class ModelView implements Model
 		}
 	}
 
-	public IterableInt findDeadlocks(final BitSet except)
+	public FunctionalPrimitiveIterable.OfInt findDeadlocks(final BitSet except)
 	{
-		IterableInt states = new IterableStateSet(except, getNumStates(), true);
+		IterableStateSet states = new IterableStateSet(except, getNumStates(), true);
 		return new FilteringIterable.OfInt(states, state -> !getSuccessorsIterator(state).hasNext());
 	}
 

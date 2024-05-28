@@ -26,8 +26,8 @@
 
 package prism;
 
-import parser.ast.RelOp;
 import explicit.MinMax;
+import parser.ast.RelOp;
 
 /**
  * Class to represent info (operator, relational operator, bound, etc.) found in a P/R/S operator.
@@ -112,20 +112,42 @@ public class OpRelOpBound
 	public MinMax getMinMax(ModelType modelType, boolean forAll) throws PrismLangException
 	{
 		MinMax minMax = MinMax.blank();
-		if (modelType.nondeterministic()) {
-			if (!(modelType == ModelType.MDP || modelType == ModelType.POMDP || modelType == ModelType.CTMDP)) {
-				throw new PrismLangException("Don't know how to model check " + getTypeOfOperator() + " properties for " + modelType + "s");
-			}
+		int nondetSources = modelType.nondeterministic() ? 1 : 0;
+		nondetSources += modelType.uncertain() ? 1 : 0;
+		if (nondetSources > 0) {
 			if (isNumeric()) {
 				if (relOp == RelOp.EQ) {
 					throw new PrismLangException("Can't use \"" + op + "=?\" for nondeterministic models; use e.g. \"" + op + "min=?\" or \"" + op + "max=?\"");
 				}
-				minMax = relOp.isMin() ? MinMax.min() : MinMax.max();
-			} else {
-				if (forAll) {
-					minMax = (relOp.isLowerBound() ) ? MinMax.min() : MinMax.max();
+				if (nondetSources == 1) {
+					if (relOp == RelOp.MINMIN || relOp == RelOp.MINMAX || relOp == RelOp.MAXMIN || relOp == RelOp.MAXMAX) {
+						throw new PrismLangException("Can't use \"" + toString() + " for " + modelType + "s");
+					}
+					if (modelType.uncertain()) {
+						// IDTMC
+						minMax = MinMax.blank().setMinUnc(relOp.isMin());
+					} else {
+						// MDP etc.
+						minMax = relOp.isMin() ? MinMax.min() : MinMax.max();
+					}
 				} else {
-					minMax = (relOp.isLowerBound() ) ? MinMax.max() : MinMax.min();
+					// IMDP
+					if (relOp == RelOp.MIN || relOp == RelOp.MINMIN || relOp == RelOp.MINMAX) {
+						minMax = MinMax.min();
+					} else {
+						minMax = MinMax.max();
+					}
+					minMax.setMinUnc(relOp == RelOp.MIN || relOp == RelOp.MINMIN || relOp == RelOp.MAXMIN);
+				}
+			} else {
+				boolean min = forAll ? relOp.isLowerBound() : relOp.isUpperBound();
+				if (!modelType.nondeterministic()) {
+					minMax = MinMax.blank();
+				} else {
+					minMax = min ? MinMax.min() : MinMax.max();
+				}
+				if (modelType.uncertain()) {
+					minMax.setMinUnc(min);
 				}
 			}
 		}
@@ -149,5 +171,42 @@ public class OpRelOpBound
 	public String toString()
 	{
 		return op + relOp.toString() + (isNumeric() ? "?" : bound);
+	}
+
+	/**
+	 * Apply this relational operator and bound instance to a value.
+	 */
+	public boolean apply(double value) throws PrismException
+	{
+		switch (relOp) {
+		case GEQ:
+			return (double) value >= bound;
+		case GT:
+			return (double) value > bound;
+		case LEQ:
+			return (double) value <= bound;
+		case LT:
+			return (double) value < bound;
+		default:
+			throw new PrismException("Cannot apply relational operator " + relOp);
+		}
+	}
+	
+	/**
+	 * Apply this relational operator and bound instance to a value.
+	 * If the value is stored imprecisely (i.e., floating point),
+	 * the specified accuracy (if non-null) is taken into account, and an
+	 * exception is thrown if the value is not accurate enough to check the bound.
+	 */
+	public boolean apply(double value, Accuracy accuracy) throws PrismException
+	{
+		if (accuracy != null) {
+			boolean valueLow = apply(accuracy.getResultLowerBound(value));
+			boolean valueHigh = apply(accuracy.getResultUpperBound(value));
+			if (valueLow != valueHigh) {
+				throw new PrismException("Accuracy of value " + value  + " is not enough to compare to bound " + bound);
+			}
+		}
+		return apply(value);
 	}
 }

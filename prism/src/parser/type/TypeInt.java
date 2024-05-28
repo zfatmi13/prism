@@ -26,7 +26,11 @@
 
 package parser.type;
 
-import param.BigRational;
+import java.math.BigInteger;
+
+import parser.EvaluateContext.EvalMode;
+import parser.ast.DeclarationIntUnbounded;
+import parser.ast.DeclarationType;
 import prism.PrismLangException;
 
 public class TypeInt extends Type 
@@ -68,24 +72,52 @@ public class TypeInt extends Type
 	}
 	
 	@Override
-	public boolean canAssign(Type type)
+	public DeclarationType defaultDeclarationType()
+	{
+		return new DeclarationIntUnbounded();
+	}
+	
+	@Override
+	public boolean canCastTypeTo(Type type)
 	{
 		return (type instanceof TypeInt);
 	}
 	
 	@Override
-	public Integer castValueTo(Object value) throws PrismLangException
+	public Number castValueTo(Object value) throws PrismLangException
 	{
-		if (value instanceof Integer)
+		if (value instanceof Integer) {
 			return (Integer) value;
-		else
+		} else if (value instanceof BigInteger) {
+			return (BigInteger) value;
+		} else {
 			throw new PrismLangException("Can't convert " + value.getClass() + " to type " + getTypeString());
+		}
 	}
 
 	@Override
-	public Object castFromBigRational(BigRational value) throws PrismLangException
+	public Number castValueTo(Object value, EvalMode evalMode) throws PrismLangException
 	{
-		return value.toInt();
+		switch (evalMode) {
+		// For floating point mode, should be an Integer
+		case FP:
+			if (value instanceof Integer) {
+				return (Integer) value;
+			} else if (value instanceof BigInteger) {
+				return ((BigInteger) value).intValue();
+			}
+			throw new PrismLangException("Cannot convert " + value.getClass() + " to " + getTypeString());
+		// For exact mode, should be a BigInteger
+		case EXACT:
+			if (value instanceof BigInteger) {
+				return (BigInteger) value;
+			} else if (value instanceof Integer) {
+				return BigInteger.valueOf((Integer) value);
+			}
+			throw new PrismLangException("Cannot convert " + value.getClass() + " to " + getTypeString());
+		default:
+			throw new PrismLangException("Unknown evaluation mode " + evalMode);
+		}
 	}
 
 	// Standard methods:

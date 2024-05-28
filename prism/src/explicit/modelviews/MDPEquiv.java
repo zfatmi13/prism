@@ -2,7 +2,7 @@
 //	
 //	Copyright (c) 2016-
 //	Authors:
-//	* Steffen Maercker <maercker@tcs.inf.tu-dresden.de> (TU Dresden)
+//	* Steffen Maercker <steffen.maercker@tu-dresden.de> (TU Dresden)
 //	* Joachim Klein <klein@tcs.inf.tu-dresden.de> (TU Dresden)
 //	
 //------------------------------------------------------------------------------
@@ -34,13 +34,12 @@ import java.util.List;
 import java.util.Map.Entry;
 import java.util.PrimitiveIterator.OfInt;
 import java.util.Set;
+import java.util.function.IntUnaryOperator;
 
-import common.functions.primitive.PairPredicateInt;
-import common.iterable.FilteringIterator;
+import common.functions.PairPredicateInt;
 import common.IterableBitSet;
 import common.IterableStateSet;
-import common.IteratorTools;
-import common.iterable.MappingIterator;
+import common.iterable.Reducible;
 import explicit.BasicModelTransformation;
 import explicit.MDP;
 import parser.State;
@@ -55,9 +54,9 @@ import parser.VarList;
  * for their equivalence class remain in the MDP, but their
  * choices are transferred / mapped to the representative state.
  */
-public class MDPEquiv extends MDPView
+public class MDPEquiv<Value> extends MDPView<Value>
 {
-	protected MDP model;
+	protected MDP<Value> model;
 	protected EquivalenceRelationInteger identify;
 	protected int[] numChoices;
 	protected StateChoicePair[][] originalChoices;
@@ -65,7 +64,7 @@ public class MDPEquiv extends MDPView
 
 	protected MDPEquiv(){/* only here to satisfy the compiler */}
 
-	public MDPEquiv(final MDP model, final EquivalenceRelationInteger identify)
+	public MDPEquiv(final MDP<Value> model, final EquivalenceRelationInteger identify)
 	{
 		this.model = model;
 		this.identify = identify;
@@ -80,8 +79,8 @@ public class MDPEquiv extends MDPView
 				// => leave it as it is
 				numChoices[representative] = model.getNumChoices(representative);
 			} else {
-				final IterableBitSet eqStates = new IterableBitSet(equivalenceClass);
-				numChoices[representative] = IteratorTools.sum(new MappingIterator.FromIntToInt(eqStates, model::getNumChoices));
+				IterableBitSet eqStates = new IterableBitSet(equivalenceClass);
+				numChoices[representative] = Math.toIntExact(eqStates.mapToInt((IntUnaryOperator) model::getNumChoices).sum());
 				StateChoicePair[] choices = originalChoices[representative] = new StateChoicePair[numChoices[representative]];
 				assert representative == equivalenceClass.nextSetBit(0);
 				int choice = model.getNumChoices(representative);
@@ -106,7 +105,7 @@ public class MDPEquiv extends MDPView
 		}
 	}
 
-	public MDPEquiv(MDPEquiv mdpEquiv)
+	public MDPEquiv(MDPEquiv<Value> mdpEquiv)
 	{
 		super(mdpEquiv);
 		model = mdpEquiv.model;
@@ -121,9 +120,9 @@ public class MDPEquiv extends MDPView
 	//--- Cloneable ---
 
 	@Override
-	public MDPEquiv clone()
+	public MDPEquiv<Value> clone()
 	{
-		return new MDPEquiv(this);
+		return new MDPEquiv<>(this);
 	}
 
 
@@ -232,7 +231,7 @@ public class MDPEquiv extends MDPView
 		}
 		Iterator<Integer> successors = model.getSuccessorsIterator(originalState, originalChoice);
 		if (hasTransitionToNonRepresentative.get(originalState)) {
-			return FilteringIterator.dedupe(new MappingIterator.From<>(successors, this::mapStateToRestrictedModel));
+			return Reducible.extend(successors).map(this::mapStateToRestrictedModel).distinct();
 		}
 		return successors;
 	}
@@ -242,7 +241,7 @@ public class MDPEquiv extends MDPView
 	//--- MDP ---
 
 	@Override
-	public Iterator<Entry<Integer, Double>> getTransitionsIterator(final int state, final int choice)
+	public Iterator<Entry<Integer, Value>> getTransitionsIterator(final int state, final int choice)
 	{
 		StateChoicePair originals = mapToOriginalModelOrNull(state, choice);
 		final int originalState, originalChoice;
@@ -253,9 +252,9 @@ public class MDPEquiv extends MDPView
 			originalState = originals.state;
 			originalChoice = originals.choice;
 		}
-		Iterator<Entry<Integer, Double>> transitions = model.getTransitionsIterator(originalState, originalChoice);
+		Iterator<Entry<Integer, Value>> transitions = model.getTransitionsIterator(originalState, originalChoice);
 		if (hasTransitionToNonRepresentative.get(originalState)) {
-			return new MappingIterator.From<>(transitions, this::mapTransitionToRestrictedModel);
+			return Reducible.extend(transitions).map(this::mapTransitionToRestrictedModel);
 		}
 		return transitions;
 	}
@@ -288,33 +287,11 @@ public class MDPEquiv extends MDPView
 		return identify.getRepresentative(state);
 	}
 
-	public SimpleImmutableEntry<Integer, Double> mapTransitionToRestrictedModel(final Entry<Integer, Double> transition)
+	public SimpleImmutableEntry<Integer, Value> mapTransitionToRestrictedModel(final Entry<Integer, Value> transition)
 	{
 		final Integer target = identify.getRepresentative(transition.getKey());
-		final Double probability = transition.getValue();
+		final Value probability = transition.getValue();
 		return new SimpleImmutableEntry<>(target, probability);
-	}
-
-	public class StateChoicePair
-	{
-		final int state;
-		final int choice;
-
-		protected StateChoicePair(final int theState, final int theChoice)
-		{
-			state = theState;
-			choice = theChoice;
-		}
-
-		public int getState()
-		{
-			return state;
-		}
-
-		public int getChoice()
-		{
-			return choice;
-		}
 	}
 
 	public StateChoicePair mapToOriginalModel(final int state, final int choice)
@@ -341,14 +318,14 @@ public class MDPEquiv extends MDPView
 
 	//--- static methods ---
 
-	public static BasicModelTransformation<MDP, MDPEquiv> transform(MDP model, EquivalenceRelationInteger identify)
+	public static <Value> BasicModelTransformation<MDP<Value>, MDPEquiv<Value>> transform(MDP<Value> model, EquivalenceRelationInteger identify)
 	{
-		return new BasicModelTransformation<>(model, new MDPEquiv(model, identify));
+		return new BasicModelTransformation<>(model, new MDPEquiv<>(model, identify));
 	}
 
-	public static BasicModelTransformation<MDP, MDPEquiv> transformDroppingLoops(MDP model, EquivalenceRelationInteger identify)
+	public static <Value> BasicModelTransformation<MDP<Value>, MDPEquiv<Value>> transformDroppingLoops(MDP<Value> model, EquivalenceRelationInteger identify)
 	{
-		final MDPDroppedChoicesCached dropped = new MDPDroppedChoicesCached(model, new PairPredicateInt()
+		final MDPDroppedChoicesCached<Value> dropped = new MDPDroppedChoicesCached<>(model, new PairPredicateInt()
 		{
 			@Override
 			public boolean test(final int state, final int choice)
@@ -362,7 +339,7 @@ public class MDPEquiv extends MDPView
 				return true;
 			}
 		});
-		return new BasicModelTransformation<>(model, new MDPEquiv(dropped, identify));
+		return new BasicModelTransformation<>(model, new MDPEquiv<Value>(dropped, identify));
 	}
 
 }

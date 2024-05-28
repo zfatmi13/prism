@@ -26,9 +26,9 @@
 
 package parser.ast;
 
-import param.BigRational;
-import parser.*;
-import parser.visitor.*;
+import parser.EvaluateContext;
+import parser.visitor.ASTVisitor;
+import parser.visitor.DeepCopy;
 import prism.PrismLangException;
 
 public class ExpressionExists extends Expression
@@ -81,12 +81,6 @@ public class ExpressionExists extends Expression
 	}
 
 	@Override
-	public BigRational evaluateExact(EvaluateContext ec) throws PrismLangException
-	{
-		throw new PrismLangException("Cannot evaluate an E operator without a model");
-	}
-
-	@Override
 	public boolean returnsSingleValue()
 	{
 		return false;
@@ -101,12 +95,17 @@ public class ExpressionExists extends Expression
 	}
 	
 	@Override
-	public Expression deepCopy()
+	public ExpressionExists deepCopy(DeepCopy copier) throws PrismLangException
 	{
-		ExpressionExists expr = new ExpressionExists(expression.deepCopy());
-		expr.setType(type);
-		expr.setPosition(this);
-		return expr;
+		expression = copier.copy(expression);
+
+		return this;
+	}
+
+	@Override
+	public ExpressionExists clone()
+	{
+		return (ExpressionExists) super.clone();
 	}
 
 	// Standard methods

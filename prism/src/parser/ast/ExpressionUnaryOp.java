@@ -26,8 +26,11 @@
 
 package parser.ast;
 
+import java.math.BigInteger;
+
 import param.BigRational;
 import parser.*;
+import parser.EvaluateContext.EvalMode;
 import parser.visitor.*;
 import prism.PrismLangException;
 import parser.type.*;
@@ -118,43 +121,68 @@ public class ExpressionUnaryOp extends Expression
 	@Override
 	public Object evaluate(EvaluateContext ec) throws PrismLangException
 	{
-		switch (op) {
-		case NOT:
-			return !operand.evaluateBoolean(ec);
-		case MINUS:
-			if (type instanceof TypeInt) {
-				try {
-					return Math.negateExact(operand.evaluateInt(ec));
-				} catch (ArithmeticException e) {
-					throw new PrismLangException(e.getMessage(), this);
-				}
-			} else {
-				return -operand.evaluateDouble(ec);
-			}
-		case PARENTH:
-			return operand.evaluate(ec);
-		}
-		throw new PrismLangException("Unknown unary operator", this);
+		Object eval = operand.evaluate(ec);
+		return apply(eval, ec.getEvaluationMode());
 	}
 
-	@Override
-	public BigRational evaluateExact(EvaluateContext ec) throws PrismLangException
+	/**
+	 * Apply this unary operator instance to the argument provided
+	 */
+	public Object apply(Object eval, EvalMode evalMode) throws PrismLangException
 	{
 		switch (op) {
 		case NOT:
-			return BigRational.from(!operand.evaluateExact(ec).toBoolean());
+			return !((Boolean) getType().castValueTo(eval));
 		case MINUS:
-			return operand.evaluateExact(ec).negate();
+			switch (evalMode) {
+			case FP:
+				try {
+					if (getType() instanceof TypeInt) {
+						int i = (int) TypeInt.getInstance().castValueTo(eval);
+						return Math.negateExact(i);
+					} else {
+						double d = (double) TypeDouble.getInstance().castValueTo(eval);
+						return -d;
+					}
+				} catch (ArithmeticException e) {
+					throw new PrismLangException(e.getMessage(), this);
+				}
+			case EXACT:
+				if (getType() instanceof TypeInt) {
+					BigInteger i = (BigInteger) TypeInt.getInstance().castValueTo(eval);
+					return i.negate();
+				} else {
+					BigRational d = (BigRational) TypeDouble.getInstance().castValueTo(eval);
+					return d.negate();
+				}
+			default:
+				throw new PrismLangException("Unknown evaluation mode " + evalMode);
+			}
 		case PARENTH:
-			return operand.evaluateExact(ec);
+			return eval;
 		}
 		throw new PrismLangException("Unknown unary operator", this);
 	}
-
+	
 	@Override
 	public boolean returnsSingleValue()
 	{
 		return operand.returnsSingleValue();
+	}
+
+	@Override
+	public Precedence getPrecedence()
+	{
+		switch (op) {
+			case NOT:
+				return Precedence.NOT;
+			case MINUS:
+				return Precedence.UNARY_MINUS;
+			case PARENTH:
+				return Precedence.BASIC;
+			default:
+				return null;
+		}
 	}
 
 	// Methods required for ASTElement:
@@ -166,12 +194,17 @@ public class ExpressionUnaryOp extends Expression
 	}
 
 	@Override
-	public Expression deepCopy()
+	public ExpressionUnaryOp deepCopy(DeepCopy copier) throws PrismLangException
 	{
-		ExpressionUnaryOp expr = new ExpressionUnaryOp(op, operand.deepCopy());
-		expr.setType(type);
-		expr.setPosition(this);
-		return expr;
+		operand = copier.copy(operand);
+
+		return this;
+	}
+
+	@Override
+	public ExpressionUnaryOp clone()
+	{
+		return (ExpressionUnaryOp) super.clone();
 	}
 
 	// Standard methods
@@ -179,10 +212,17 @@ public class ExpressionUnaryOp extends Expression
 	@Override
 	public String toString()
 	{
-		if (op == PARENTH)
-			return "(" + operand + ")";
-		else
-			return opSymbols[op] + operand;
+		StringBuilder builder = new StringBuilder();
+		if (op == PARENTH) {
+			builder.append("(");
+		} else {
+			builder.append(opSymbols[op]);
+		}
+		builder.append(Expression.toStringPrecLt(operand, this));
+		if (op == PARENTH) {
+			builder.append(")");
+		}
+		return builder.toString();
 	}
 
 	@Override

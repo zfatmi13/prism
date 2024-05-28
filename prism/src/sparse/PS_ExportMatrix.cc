@@ -49,7 +49,9 @@ jlong __jlongpointer cv,	// col vars
 jint num_cvars,
 jlong __jlongpointer od,	// odd
 jint et,		// export type
-jstring fn		// filename
+jstring fn,		// filename
+jstring rsn,    // reward struct name
+jboolean neh    // noexportheaders
 )
 {
 	DdNode *matrix = jlong_to_DdNode(m);		// matrix
@@ -92,6 +94,14 @@ jstring fn		// filename
 	}
 	
 	// print file header
+	if (export_type == EXPORT_PLAIN && !neh) {
+		if (env->GetStringUTFLength(rsn) > 0) {
+			const char *header = env->GetStringUTFChars(rsn,0);
+			export_string("# Reward structure \"%s\"\n", header);
+			env->ReleaseStringUTFChars(rsn, header);
+		}
+		export_string("# Transition rewards\n");
+	}
 	switch (export_type) {
 	case EXPORT_PLAIN: export_string("%d %d\n", n, nnz); break;
 	case EXPORT_MATLAB: export_string("%s = sparse(%d,%d);\n", export_name, n, n); break;
@@ -144,11 +154,11 @@ jstring fn		// filename
 				d = dist[(int)(cols[j] & dist_mask)];
 			}
 			switch (export_type) {
-			case EXPORT_PLAIN: export_string("%d %d %.12g\n", r, c, d); break;
-			case EXPORT_MATLAB: export_string("%s(%d,%d)=%.12g;\n", export_name, r+1, c+1, d); break;
-			case EXPORT_DOT: case EXPORT_DOT_STATES: export_string("%d -> %d [ label=\"%.12g\" ];\n", r, c, d); break;
-			case EXPORT_MRMC: export_string("%d %d %.12g\n", r+1, c+1, d); break;
-			case EXPORT_ROWS: export_string(" %.12g:%d", d, c); break;
+			case EXPORT_PLAIN: export_string("%d %d %.*g\n", r, c, export_model_precision, d); break;
+			case EXPORT_MATLAB: export_string("%s(%d,%d)=%.*g;\n", export_name, r+1, c+1, export_model_precision, d); break;
+			case EXPORT_DOT: case EXPORT_DOT_STATES: export_string("%d -> %d [ label=\"%.*g\" ];\n", r, c, export_model_precision, d); break;
+			case EXPORT_MRMC: export_string("%d %d %.*g\n", r+1, c+1, export_model_precision, d); break;
+			case EXPORT_ROWS: export_string(" %.*g:%d", export_model_precision, d, c); break;
 			}
 		}
 		if (export_type == EXPORT_ROWS) export_string("\n");

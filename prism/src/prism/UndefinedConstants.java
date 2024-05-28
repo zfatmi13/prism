@@ -123,6 +123,32 @@ public class UndefinedConstants
 		initialise();
 	}
 
+	/**
+	 * Reconstruct information about undefined constants from a ResultCollection.
+	 * This information is necessarily incomplete.
+	 * Hence, consider the information a mockup and do not use the instance to run an experiment.
+	 * The provided property does not need to correspond to the data.
+	 * It has only a decorative function. 
+	 * @param property a property to associate with the results
+	 * @param results the ResultsCollection from which the undefined constants are extracted
+	 */
+	@SuppressWarnings("rawtypes")
+	public UndefinedConstants(Property property, ResultsCollection results)
+	{
+		setModulesFile(null);
+		setPropertiesFile(null);
+		setProperties(List.of(property));
+		// consider all constants pf constants as we do not know the model file
+		Vector<DefinedConstant> constants = results.getRangingConstants();
+		mfNumConsts = 0;
+		pfNumConsts = constants.size();
+		// create storage for info about constant definitions
+		mfConsts = new ArrayList<DefinedConstant>(mfNumConsts);
+		pfConsts = new ArrayList<DefinedConstant>(pfNumConsts);
+		// we can add constants safely as they are immutable except for the temporary value
+		pfConsts.addAll(constants);
+	}
+
 	// Setters
 
 	public void setModulesFile(ModulesFile modulesFile)
@@ -163,11 +189,11 @@ public class UndefinedConstants
 	 */
 	public void initialise()
 	{
-		Vector<String> mfv, pfv;
+		List<String> mfv, pfv;
 		// determine which constants are undefined
-		mfv = (modulesFile == null) ? new Vector<String>() : modulesFile.getUndefinedConstants();
+		mfv = (modulesFile == null) ? new ArrayList<>() : modulesFile.getUndefinedConstants();
 		if (propertiesFile == null) {
-			pfv = new Vector<String>();
+			pfv = new ArrayList<>();
 		} else {
 			if (props == null) {
 				if (justLabels) {
@@ -188,10 +214,10 @@ public class UndefinedConstants
 	/**
 	 * Create a new copy of a list of constant names, sorted by their occurrence in a PropertiesFile. 
 	 */
-	private Vector<String> orderConstantsByPropertiesFile(Vector<String> oldList, PropertiesFile propertiesFile)
+	private List<String> orderConstantsByPropertiesFile(List<String> oldList, PropertiesFile propertiesFile)
 	{
-		Vector<String> newList = new Vector<String>();
-		Vector<String> pfList = propertiesFile.getUndefinedConstants();
+		List<String> newList = new ArrayList<>();
+		List<String> pfList = propertiesFile.getUndefinedConstants();
 		for (String s : pfList) {
 			if (oldList.contains(s))
 				newList.add(s);
@@ -202,7 +228,7 @@ public class UndefinedConstants
 	/**
 	 * Set up data structures (as required by constructor methods)
 	 */
-	private void setUpDataStructures(Vector<String> mfv, Vector<String> pfv)
+	private void setUpDataStructures(List<String> mfv, List<String> pfv)
 	{
 		int i;
 		String s;
@@ -212,13 +238,15 @@ public class UndefinedConstants
 		// create storage for info about constant definitions
 		mfConsts = new ArrayList<DefinedConstant>(mfNumConsts);
 		for (i = 0; i < mfNumConsts; i++) {
-			s = (String) mfv.elementAt(i);
-			mfConsts.add(new DefinedConstant(s, modulesFile.getConstantList().getConstantType(modulesFile.getConstantList().getConstantIndex(s))));
+			s = mfv.get(i);
+			Type type = modulesFile.getConstantList().getConstantType(modulesFile.getConstantList().getConstantIndex(s));
+			mfConsts.add(new DefinedConstant.Undefined(s, type));
 		}
 		pfConsts = new ArrayList<DefinedConstant>(pfNumConsts);
 		for (i = 0; i < pfNumConsts; i++) {
-			s = (String) pfv.elementAt(i);
-			pfConsts.add(new DefinedConstant(s, propertiesFile.getConstantList().getConstantType(propertiesFile.getConstantList().getConstantIndex(s))));
+			s = pfv.get(i);
+			Type type = propertiesFile.getConstantList().getConstantType(propertiesFile.getConstantList().getConstantIndex(s));
+			pfConsts.add(new DefinedConstant.Undefined(s, type));
 		}
 		// initialise storage just created
 		clearAllDefinitions();
@@ -331,12 +359,12 @@ public class UndefinedConstants
 
 		// constants from model file
 		for (i = 0; i < mfNumConsts; i++) {
-			mfConsts.get(i).clear();
+			mfConsts.set(i, mfConsts.get(i).clear());
 			;
 		}
 		// constants from properties file
 		for (i = 0; i < pfNumConsts; i++) {
-			pfConsts.get(i).clear();
+			pfConsts.set(i, pfConsts.get(i).clear());
 		}
 	}
 
@@ -510,13 +538,13 @@ public class UndefinedConstants
 		if (index != -1) {
 			// const is in modules file
 			overwrite = (mfConsts.get(index).isDefined());
-			mfConsts.get(index).define(sl, sh, ss, exact);
+			mfConsts.set(index, mfConsts.get(index).define(sl, sh, ss, exact));
 		} else {
 			index = getPFConstIndex(name);
 			if (index != -1) {
 				// const is in properties file
 				overwrite = (pfConsts.get(index).isDefined());
-				pfConsts.get(index).define(sl, sh, ss, exact);
+				pfConsts.set(index, pfConsts.get(index).define(sl, sh, ss, exact));
 			} else {
 				// If we are required to use all supplied const values, check for this
 				// (by default we don't care about un-needed or non-existent const values)

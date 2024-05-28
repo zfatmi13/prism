@@ -26,6 +26,7 @@
 
 package parser.type;
 
+import parser.EvaluateContext.EvalMode;
 import prism.PrismLangException;
 
 public class TypeClock extends Type 
@@ -67,20 +68,25 @@ public class TypeClock extends Type
 	}
 	
 	@Override
-	public boolean canAssign(Type type)
+	public boolean canCastTypeTo(Type type)
 	{
-		return (type instanceof TypeClock);
+		return (type instanceof TypeClock || TypeDouble.getInstance().canCastTypeTo(type));
 	}
 	
 	@Override
-	public Double castValueTo(Object value) throws PrismLangException
+	public Number castValueTo(Object value) throws PrismLangException
 	{
-		if (value instanceof Double)
-			return (Double) value;
-		if (value instanceof Integer)
-			return ((Double) value).doubleValue();
-		else
-			throw new PrismLangException("Can't convert " + value.getClass() + " to type " + getTypeString());
+		// Same as double so reuse code
+		// (probably not used too often so performance not so relevant)
+		return TypeDouble.getInstance().castValueTo(value);
+	}
+	
+	@Override
+	public Number castValueTo(Object value, EvalMode evalMode) throws PrismLangException
+	{
+		// Same as double so reuse code
+		// (probably not used too often so performance not so relevant)
+		return TypeDouble.getInstance().castValueTo(value, evalMode);
 	}
 
 	// Standard methods:

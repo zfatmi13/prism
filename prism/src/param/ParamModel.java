@@ -34,7 +34,7 @@ import java.util.Map.Entry;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
-import explicit.MDPGeneric;
+import explicit.MDP;
 import explicit.Model;
 import explicit.ModelExplicit;
 import explicit.SuccessorsIterator;
@@ -52,7 +52,7 @@ import strat.MDStrategy;
  * This turned out the be the most convenient way to implement model checking
  * for parametric models.
  */
-public final class ParamModel extends ModelExplicit implements MDPGeneric<Function>
+public final class ParamModel extends ModelExplicit<Function> implements MDP<Function>
 {
 	/** total number of nondeterministic choices over all states */
 	private int numTotalChoices;
@@ -260,7 +260,7 @@ public final class ParamModel extends ModelExplicit implements MDPGeneric<Functi
 	}
 
 	@Override
-	public void exportToPrismExplicitTra(PrismLog out)
+	public void exportToPrismExplicitTra(PrismLog out, int precision)
 	{
 		int i, j, numChoices;
 		Object action;
@@ -303,7 +303,7 @@ public final class ParamModel extends ModelExplicit implements MDPGeneric<Functi
 	}
 
 	@Override
-	public void exportTransitionsToDotFile(int i, PrismLog out, Iterable<explicit.graphviz.Decorator> decorators)
+	public void exportTransitionsToDotFile(int i, PrismLog out, Iterable<explicit.graphviz.Decorator> decorators, int precision)
 	{
 		int numChoices = getNumChoices(i);
 		for (int j = 0; j < numChoices; j++) {
@@ -366,19 +366,19 @@ public final class ParamModel extends ModelExplicit implements MDPGeneric<Functi
 	}
 
 	@Override
-	public void exportToDotFileWithStrat(PrismLog out, BitSet mark, int[] strat)
+	public void exportToDotFileWithStrat(PrismLog out, BitSet mark, int[] strat, int precision)
 	{
 		throw new UnsupportedOperationException();
 	}
 
 	@Override
-	public void exportToPrismLanguage(String filename) throws PrismException
+	public void exportToPrismLanguage(String filename, int precision) throws PrismException
 	{
 		throw new UnsupportedOperationException();
 	}
 
 	@Override
-	public Model constructInducedModel(MDStrategy strat)
+	public Model<Function> constructInducedModel(MDStrategy<Function> strat)
 	{
 		throw new UnsupportedOperationException();
 	}

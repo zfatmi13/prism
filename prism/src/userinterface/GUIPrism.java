@@ -302,8 +302,12 @@ public class GUIPrism extends JFrame
 				theTabs.addTab(plug.getTabText(), plug);
 				theTabs.setEnabledAt(theTabs.getComponentCount() - 1, plug.isEnabled());
 			}
-			if (plug.getMenu() != null) {
-				menuBar.add(plug.getMenu());
+			if (plug.getMenus() != null) {
+				for (JMenu menu : plug.getMenus()) {
+					if (menu != null) {
+						menuBar.add(menu);
+					}
+				}
 			}
 			if (plug.getToolBar() != null) {
 				toolPanel.add(plug.getToolBar());
@@ -339,7 +343,7 @@ public class GUIPrism extends JFrame
 			}
 		};
 		prismOptions.putValue(Action.LONG_DESCRIPTION, "Brings up an option dialog for setting PRISM and user interface parameters.");
-		prismOptions.putValue(Action.MNEMONIC_KEY, new Integer(KeyEvent.VK_O));
+		prismOptions.putValue(Action.MNEMONIC_KEY, Integer.valueOf(KeyEvent.VK_O));
 		prismOptions.putValue(Action.NAME, "Options");
 		prismOptions.putValue(Action.SMALL_ICON, GUIPrism.getIconFromImage("smallOptions.png"));
 
@@ -354,7 +358,7 @@ public class GUIPrism extends JFrame
 			}
 		};
 		fontIncrease.putValue(Action.LONG_DESCRIPTION, "Increase the application font size.");
-		fontIncrease.putValue(Action.MNEMONIC_KEY, new Integer(KeyEvent.VK_I));
+		fontIncrease.putValue(Action.MNEMONIC_KEY, Integer.valueOf(KeyEvent.VK_I));
 		fontIncrease.putValue(Action.NAME, "Increase font size");
 		fontIncrease.putValue(Action.SMALL_ICON, GUIPrism.getIconFromImage("smallFontIncrease.png"));
 		fontIncrease.putValue(Action.ACCELERATOR_KEY,
@@ -371,7 +375,7 @@ public class GUIPrism extends JFrame
 			}
 		};
 		fontDecrease.putValue(Action.LONG_DESCRIPTION, "Decrease the application font size.");
-		fontDecrease.putValue(Action.MNEMONIC_KEY, new Integer(KeyEvent.VK_D));
+		fontDecrease.putValue(Action.MNEMONIC_KEY, Integer.valueOf(KeyEvent.VK_D));
 		fontDecrease.putValue(Action.NAME, "Decrease font size");
 		fontDecrease.putValue(Action.SMALL_ICON, GUIPrism.getIconFromImage("smallFontDecrease.png"));
 		fontDecrease.putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_MINUS, Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));
@@ -425,8 +429,9 @@ public class GUIPrism extends JFrame
 				// remove optional second "-" (i.e. we allow switches of the form --sw too)
 				if (sw.charAt(0) == '-')
 					sw = sw.substring(1);
-				if (sw.equals("javamaxmem") || sw.equals("javastack")) {
-					// ignore argument and subsequent value
+				// java max mem & java stack size & java parameters
+				if (sw.equals("javamaxmem") || sw.equals("javastack") || sw.equals("javaparams")) {
+					// ignore argument and subsequent value, this is dealt with before java is launched
 					i++;
 				} else if (sw.equals("dir")) {
 					if (i < args.length - 1) {

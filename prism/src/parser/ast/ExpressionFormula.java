@@ -26,9 +26,9 @@
 
 package parser.ast;
 
-import param.BigRational;
-import parser.*;
-import parser.visitor.*;
+import parser.EvaluateContext;
+import parser.visitor.ASTVisitor;
+import parser.visitor.DeepCopy;
 import prism.PrismLangException;
 
 public class ExpressionFormula extends Expression
@@ -99,16 +99,6 @@ public class ExpressionFormula extends Expression
 	}
 
 	@Override
-	public BigRational evaluateExact(EvaluateContext ec) throws PrismLangException
-	{
-		// Should only be called (if at all) after definition has been set
-		if (definition == null)
-			throw new PrismLangException("Could not evaluate formula", this);
-		else
-			return definition.evaluateExact(ec);
-	}
-
-	@Override
 	public boolean returnsSingleValue()
 	{
 		// Unless defined, don't know so err on the side of caution
@@ -124,12 +114,17 @@ public class ExpressionFormula extends Expression
 	}
 		
 	@Override
-	public Expression deepCopy()
+	public ExpressionFormula deepCopy(DeepCopy copier) throws PrismLangException
 	{
-		ExpressionFormula ret = new ExpressionFormula(name);
-		ret.setDefinition(definition == null ? null : definition.deepCopy());
-		ret.setPosition(this);
-		return ret;
+		definition = copier.copy(definition);
+
+		return this;
+	}
+
+	@Override
+	public ExpressionFormula clone()
+	{
+		return (ExpressionFormula) super.clone();
 	}
 
 	// Standard methods

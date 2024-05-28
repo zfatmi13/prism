@@ -477,6 +477,25 @@ public class StateModelChecker extends PrismComponent implements ModelChecker
 			case ExpressionBinaryOp.DIVIDE:
 				dd = JDD.Apply(JDD.DIVIDE, dd1, dd2);
 				break;
+			case ExpressionBinaryOp.POW:
+				// Deref dd1/dd2 because may still need below
+				JDD.Ref(dd1);
+				JDD.Ref(dd2);
+				dd = JDD.Apply(JDD.POW, dd1, dd2);
+				// Check for some possible problems in case of integer power
+				// (denote error with NaN for states with problems)
+				if (expr.getType() instanceof TypeInt) {
+					// Negative exponent not allowed for integer power
+					JDD.Ref(dd2);
+					dd = JDD.ITE(JDD.LessThan(dd2, 0), JDD.Constant(0.0 / 0.0), dd);
+					// Check for integer overflow
+					JDD.Ref(dd);
+					dd = JDD.ITE(JDD.GreaterThan(dd, Integer.MAX_VALUE), JDD.Constant(0.0 / 0.0), dd);
+				}
+				// Late deref of dd1/dd2 because needed above
+				JDD.Deref(dd1);
+				JDD.Deref(dd2);
+				break;
 			default:
 				throw new PrismException("Unknown binary operator");
 			}
@@ -511,6 +530,21 @@ public class StateModelChecker extends PrismComponent implements ModelChecker
 			case ExpressionBinaryOp.DIVIDE:
 				for (i = 0; i < n; i++)
 					dv1.setElement(i, dv1.getElement(i) / dv2.getElement(i));
+				break;
+			case ExpressionBinaryOp.POW:
+				// For integer power, have to check for errors and flag as NaN
+				if (expr.getType() instanceof TypeInt) {
+					double base, exp, pow;
+					for (i = 0; i < n; i++) {
+						base = dv1.getElement(i);
+						exp = dv2.getElement(i);
+						pow = Math.pow(base, exp);
+						dv1.setElement(i, (exp < 0 || pow > Integer.MAX_VALUE) ? 0.0 / 0.0 : pow);
+					}
+				} else {
+					for (i = 0; i < n; i++)
+						dv1.setElement(i, Math.pow(dv1.getElement(i), dv2.getElement(i)));
+				}
 				break;
 			default:
 				throw new PrismException("Unknown binary operator");
@@ -547,7 +581,7 @@ public class StateModelChecker extends PrismComponent implements ModelChecker
 			s = e1.getName();
 			v = varList.getIndex(s);
 			if (v == -1) {
-				throw new PrismException("Unknown variable \"" + s + "\"");
+				throw new PrismLangException("Unknown variable \"" + e1.getName() + "\" (no index information)", e1);
 			}
 			// get some info on the variable
 			l = varList.getLow(v);
@@ -599,7 +633,7 @@ public class StateModelChecker extends PrismComponent implements ModelChecker
 			s = e2.getName();
 			v = varList.getIndex(s);
 			if (v == -1) {
-				throw new PrismException("Unknown variable \"" + s + "\"");
+				throw new PrismLangException("Unknown variable \"" + e2.getName() + "\" (no index information)", e2);
 			}
 			// get some info on the variable
 			l = varList.getLow(v);
@@ -1036,7 +1070,7 @@ public class StateModelChecker extends PrismComponent implements ModelChecker
 		// get the variable's index
 		v = varList.getIndex(s);
 		if (v == -1) {
-			throw new PrismException("Unknown variable \"" + s + "\"");
+			throw new PrismLangException("Unknown variable \"" + expr.getName() + "\"", expr);
 		}
 		// get some info on the variable
 		l = varList.getLow(v);
@@ -1279,7 +1313,7 @@ public class StateModelChecker extends PrismComponent implements ModelChecker
 			vals.filter(ddFilter);
 			d = vals.getNNZ();
 			// Store as object/vector
-			resObj = new Integer((int) d);
+			resObj = Integer.valueOf((int) d);
 			resVals = new StateValuesMTBDD(JDD.Constant(d), model);
 			// Create explanation of result and print some details to log
 			resultExpl = filterTrue ? "Count of satisfying states" : "Count of satisfying states also in filter";
@@ -1299,7 +1333,7 @@ public class StateModelChecker extends PrismComponent implements ModelChecker
 			// Compute average
 			d = vals.sumOverBDD(ddFilter) / JDD.GetNumMinterms(ddFilter, allDDRowVars.n());
 			// Store as object/vector
-			resObj = new Double(d);
+			resObj = Double.valueOf(d);
 			resVals = new StateValuesMTBDD(JDD.Constant(d), model);
 			// Create explanation of result and print some details to log
 			resultExpl = "Average over " + filterStatesString;
@@ -1348,7 +1382,7 @@ public class StateModelChecker extends PrismComponent implements ModelChecker
 			states = new StateListMTBDD(dd, model);
 			b = dd.equals(ddFilter);
 			// Store as object/vector
-			resObj = new Boolean(b);
+			resObj = Boolean.valueOf(b);
 			resVals = new StateValuesMTBDD(JDD.Constant(b ? 1.0 : 0.0), model);
 			// Set vals to null so that is not clear()-ed twice
 			vals = null;
@@ -1382,7 +1416,7 @@ public class StateModelChecker extends PrismComponent implements ModelChecker
 			dd = JDD.And(dd, ddFilter);
 			b = !dd.equals(JDD.ZERO);
 			// Store as object/vector
-			resObj = new Boolean(b);
+			resObj = Boolean.valueOf(b);
 			resVals = new StateValuesMTBDD(JDD.Constant(b ? 1.0 : 0.0), model);
 			// Set vals to null so that is not clear()-ed twice
 			vals = null;
@@ -1566,7 +1600,7 @@ public class StateModelChecker extends PrismComponent implements ModelChecker
 			stateRewards = model.getStateRewards(0);
 		} else if (rs instanceof Expression) {
 			int i = ((Expression) rs).evaluateInt(constantValues);
-			rs = new Integer(i); // for better error reporting below
+			rs = Integer.valueOf(i); // for better error reporting below
 			stateRewards = model.getStateRewards(i - 1);
 		} else if (rs instanceof String) {
 			stateRewards = model.getStateRewards((String) rs);
@@ -1589,7 +1623,7 @@ public class StateModelChecker extends PrismComponent implements ModelChecker
 			transRewards = model.getTransRewards(0);
 		} else if (rs instanceof Expression) {
 			int i = ((Expression) rs).evaluateInt(constantValues);
-			rs = new Integer(i); // for better error reporting below
+			rs = Integer.valueOf(i); // for better error reporting below
 			transRewards = model.getTransRewards(i - 1);
 		} else if (rs instanceof String) {
 			transRewards = model.getTransRewards((String) rs);

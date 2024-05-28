@@ -26,9 +26,11 @@
 
 package parser.ast;
 
-import param.BigRational;
-import parser.*;
-import parser.visitor.*;
+import parser.EvaluateContext;
+import parser.EvaluateContext.EvalMode;
+import parser.type.TypeBool;
+import parser.visitor.ASTVisitor;
+import parser.visitor.DeepCopy;
 import prism.PrismLangException;
 
 public class ExpressionITE extends Expression
@@ -98,19 +100,31 @@ public class ExpressionITE extends Expression
 	@Override
 	public Object evaluate(EvaluateContext ec) throws PrismLangException
 	{
-		return operand1.evaluateBoolean(ec) ? operand2.evaluate(ec) : operand3.evaluate(ec);
+		// Note that we don't use apply(...) because we want short-circuiting
+		Object eval1 = operand1.evaluate(ec);
+		boolean b = TypeBool.getInstance().castValueTo(eval1);
+		return getType().castValueTo(b ? operand2.evaluate(ec) : operand3.evaluate(ec), ec.getEvaluationMode());
 	}
 
-	@Override
-	public BigRational evaluateExact(EvaluateContext ec) throws PrismLangException
+	/**
+	 * Apply this ITE operator instance to the arguments provided
+	 */
+	public Object apply(Object eval1, Object eval2, Object eval3, EvalMode evalMode) throws PrismLangException
 	{
-		return operand1.evaluateExact(ec).toBoolean() ? operand2.evaluateExact(ec) : operand3.evaluateExact(ec);
+		boolean b = TypeBool.getInstance().castValueTo(eval1);
+		return getType().castValueTo(b ? eval2 : eval3, evalMode);
 	}
-
+	
 	@Override
 	public boolean returnsSingleValue()
 	{
 		return operand1.returnsSingleValue() && operand2.returnsSingleValue() && operand3.returnsSingleValue();
+	}
+
+	@Override
+	public Precedence getPrecedence()
+	{
+		return Precedence.ITE;
 	}
 
 	// Methods required for ASTElement:
@@ -122,12 +136,19 @@ public class ExpressionITE extends Expression
 	}
 
 	@Override
-	public Expression deepCopy()
+	public ExpressionITE deepCopy(DeepCopy copier) throws PrismLangException
 	{
-		ExpressionITE expr = new ExpressionITE(operand1.deepCopy(), operand2.deepCopy(), operand3.deepCopy());
-		expr.setType(type);
-		expr.setPosition(this);
-		return expr;
+		operand1 = copier.copy(operand1);
+		operand2 = copier.copy(operand2);
+		operand3 = copier.copy(operand3);
+
+		return this;
+	}
+
+	@Override
+	public ExpressionITE clone()
+	{
+		return (ExpressionITE) super.clone();
 	}
 
 	// Standard methods
@@ -135,7 +156,14 @@ public class ExpressionITE extends Expression
 	@Override
 	public String toString()
 	{
-		return operand1 + " ? " + operand2 + " : " + operand3;
+		StringBuilder builder = new StringBuilder();
+		// ? is a (right-associative) non-commutative operator
+		builder.append(Expression.toStringPrecLeq(operand1, this));
+		builder.append("?");
+		builder.append(Expression.toStringPrecLeq(operand2, this));
+		builder.append(":");
+		builder.append(Expression.toStringPrecLt(operand3, this));
+		return builder.toString();
 	}
 
 	@Override

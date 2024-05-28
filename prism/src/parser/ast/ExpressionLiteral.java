@@ -26,11 +26,17 @@
 
 package parser.ast;
 
+import java.math.BigInteger;
+
 import param.BigRational;
-import parser.*;
-import parser.visitor.*;
+import parser.EvaluateContext;
+import parser.EvaluateContext.EvalMode;
+import parser.type.Type;
+import parser.type.TypeDouble;
+import parser.type.TypeInt;
+import parser.visitor.ASTVisitor;
+import parser.visitor.DeepCopy;
 import prism.PrismLangException;
-import parser.type.*;
 public class ExpressionLiteral extends Expression
 {
 	Object value; // Value
@@ -92,24 +98,25 @@ public class ExpressionLiteral extends Expression
 	@Override
 	public Object evaluate(EvaluateContext ec) throws PrismLangException
 	{
-		if (value instanceof BigRational) {
-			// cast from BigRational to appropriate Java data type
-			return getType().castFromBigRational((BigRational) value);
+		// For exact mode and numerical types, the value may have been
+		// stored non-exactly, so we regenerate it from the string
+		if (ec.getEvaluationMode() == EvalMode.EXACT) {
+			if (type instanceof TypeDouble) {
+				if (value instanceof BigRational) {
+					return value;
+				} else {
+					return new BigRational(string);
+				}
+			} else if (type instanceof TypeInt) {
+				if (value instanceof BigInteger) {
+					return value;
+				} else {
+					return new BigInteger(string);
+				}
+			}
 		}
-		return value;
-	}
-
-	@Override
-	public BigRational evaluateExact(EvaluateContext ec) throws PrismLangException
-	{
-		if (value instanceof BigRational) {
-			// if already a BigRational, return that
-			return (BigRational) value;
-		} else if (value instanceof Boolean) {
-			return BigRational.from(value);
-		}
-		// otherwise, convert from string representation (potentially provides more precision for double literals)
-		return BigRational.from(string);
+		// Otherwise, cast to the right Object for type/mode
+		return getType().castValueTo(value, ec.getEvaluationMode());
 	}
 
 	@Override
@@ -127,11 +134,15 @@ public class ExpressionLiteral extends Expression
 	}
 
 	@Override
-	public Expression deepCopy()
+	public ExpressionLiteral deepCopy(DeepCopy copier)
 	{
-		Expression expr = new ExpressionLiteral(type, value, string);
-		expr.setPosition(this);
-		return expr;
+		return this;
+	}
+
+	@Override
+	public ExpressionLiteral clone()
+	{
+		return (ExpressionLiteral) super.clone();
 	}
 
 	// Standard methods

@@ -26,7 +26,8 @@
 
 package parser.type;
 
-import param.BigRational;
+import parser.EvaluateContext.EvalMode;
+import parser.ast.DeclarationType;
 import prism.PrismLangException;
 
 public abstract class Type 
@@ -55,17 +56,29 @@ public abstract class Type
 	}
 	
 	/**
-	 * Returns true iff a variable of this type can be assigned a value that is of type {@code type}. 
+	 * Returns an appropriate DeclarationType object for this type, assuming no info about bounds, etc.
 	 */
-	public boolean canAssign(Type type)
+	public DeclarationType defaultDeclarationType() throws PrismLangException
+	{
+		// Not implemented by default
+		throw new PrismLangException("Cannot create a DeclarationType for type " + getTypeString());
+	}
+	
+	/**
+	 * Returns true iff a value of type {@code type} can be cast to a value of this type.
+	 */
+	public boolean canCastTypeTo(Type type)
 	{
 		// Play safe: assume not possible, unless explicitly overridden.
 		return false;
 	}
 	
 	/**
-	 * Make sure that a value, stored as an Object (Integer, Boolean, etc.) is of this type.
-	 * Basically, implement some implicit casts, e.g. Integer -> Double.
+	 * Make sure that a value, stored as an Object (Integer, Boolean, etc.)
+	 * is the correct kind of Object for this type.
+	 * Basically, implement some implicit casts (e.g. from type int to double).
+	 * The evaluation mode is not changed (e.g. when casting  int to double,
+	 * the conversion could be either Integer -> Double or BigInteger -> BigRational).
 	 * This should only only work for combinations of types that satisfy {@code #canAssign(Type)}.
 	 * If not, an exception is thrown (but such problems should have been caught earlier by type checking)
 	 */
@@ -76,19 +89,21 @@ public abstract class Type
 	}
 
 	/**
-	 * Cast a BigRational value to the Java data type (Boolean, Integer, Double, ...)
-	 * corresponding to this type.
-	 * <br>
-	 * For boolean and integer, this throws an exception if the value can not be
-	 * precisely represented by the Java data type; for double, loss of precision
-	 * is expected and does not raise an exception.
+	 * Make sure that a value, stored as an Object (Integer, Boolean, etc.),
+	 * is the correct kind of Object for this type, and a given evaluation mode.
+	 * E.g. a "double" is stored as a Double for floating point mode (EvalMode.FP)
+	 * but a BigRational for exact mode (EvalMode.EXACT).
+	 * Basically, implement some implicit casts (e.g. from type int to double)
+	 * and some conversions between evaluation modes (e.g. BigRational to Double).
+	 * This should only only work for combinations of types that satisfy {@code #canAssign(Type)}.
+	 * If not, an exception is thrown (but such problems should have been caught earlier by type checking)
 	 */
-	public Object castFromBigRational(BigRational value) throws PrismLangException
+	public Object castValueTo(Object value, EvalMode evalMode) throws PrismLangException
 	{
 		// Play safe: assume error unless explicitly overridden.
-		throw new PrismLangException("Cannot cast rational number to type " + getTypeString());
+		throw new PrismLangException("Cannot cast a value to type " + getTypeString());
 	}
-
+	
 	@Override
 	public String toString()
 	{

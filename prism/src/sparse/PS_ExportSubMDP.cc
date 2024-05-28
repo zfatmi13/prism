@@ -52,7 +52,9 @@ jlong __jlongpointer ndv,	// nondet vars
 jint num_ndvars,
 jlong __jlongpointer od,	// odd
 jint et,		// export type
-jstring fn		// filename
+jstring fn,		// filename
+jstring rsn,    // reward struct name
+jboolean neh    // noexportheaders
 )
 {
 	DdNode *mdp = jlong_to_DdNode(m);		// mdp
@@ -83,6 +85,14 @@ jstring fn		// filename
 	nc = ndsm->nc;
 	
 	// print file header
+	if (export_type == EXPORT_PLAIN && !neh) {
+		if (env->GetStringUTFLength(rsn) > 0) {
+			const char *header = env->GetStringUTFChars(rsn,0);
+			export_string("# Reward structure \"%s\"\n", header);
+			env->ReleaseStringUTFChars(rsn, header);
+		}
+		export_string("# Transition rewards\n");
+	}
 	switch (export_type) {
 	case EXPORT_PLAIN: export_string("%d %d %ld\n", n, nc, nnz); break;
 	case EXPORT_MATLAB: for (i = 0; i < ndsm->k; i++) export_string("%s%d = sparse(%d,%d);\n", export_name, i+1, n, n); break;
@@ -109,9 +119,9 @@ jstring fn		// filename
 			if (export_type == EXPORT_ROWS) export_string("%d", i);
 			for (k = l2; k < h2; k++) {
 				switch (export_type) {
-				case EXPORT_PLAIN: export_string("%d %d %d %.12g\n", i, j-l1, cols[k], non_zeros[k]); break;
-				case EXPORT_MATLAB: export_string("%s%d(%d,%d)=%.12g;\n", export_name, j-l1+1, i+1, cols[k]+1, non_zeros[k]); break;
-				case EXPORT_ROWS: export_string(" %.12g:%d", non_zeros[k], cols[k]); break;
+				case EXPORT_PLAIN: export_string("%d %d %d %.*g\n", i, j-l1, cols[k], export_model_precision, non_zeros[k]); break;
+				case EXPORT_MATLAB: export_string("%s%d(%d,%d)=%.*g;\n", export_name, j-l1+1, i+1, cols[k]+1, export_model_precision, non_zeros[k]); break;
+				case EXPORT_ROWS: export_string(" %.*g:%d", export_model_precision, non_zeros[k], cols[k]); break;
 				}
 			}
 			if (export_type == EXPORT_ROWS) export_string("\n");

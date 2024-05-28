@@ -26,9 +26,9 @@
 
 package parser.ast;
 
-import param.BigRational;
-import parser.*;
-import parser.visitor.*;
+import parser.EvaluateContext;
+import parser.visitor.ASTVisitor;
+import parser.visitor.DeepCopy;
 import prism.PrismLangException;
 
 public class ExpressionIdent extends Expression
@@ -85,14 +85,6 @@ public class ExpressionIdent extends Expression
 	}
 
 	@Override
-	public BigRational evaluateExact(EvaluateContext ec) throws PrismLangException
-	{
-		// This should never be called.
-		// The ExpressionIdent should have been converted to an ExpressionVar/ExpressionConstant/...
-		throw new PrismLangException("Could not evaluate identifier", this);
-	}
-
-	@Override
 	public boolean returnsSingleValue()
 	{
 		// Don't know - err on the side of caution
@@ -108,12 +100,15 @@ public class ExpressionIdent extends Expression
 	}
 	
 	@Override
-	public Expression deepCopy()
+	public ExpressionIdent deepCopy(DeepCopy copier)
 	{
-		ExpressionIdent expr = new ExpressionIdent(name);
-		expr.setType(type);
-		expr.setPosition(this);
-		return expr;
+		return this;
+	}
+
+	@Override
+	public ExpressionIdent clone()
+	{
+		return (ExpressionIdent) super.clone();
 	}
 
 	// Standard methods

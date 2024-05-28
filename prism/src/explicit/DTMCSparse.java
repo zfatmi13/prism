@@ -4,7 +4,7 @@
 //	Authors:
 //	* Dave Parker <david.parker@comlab.ox.ac.uk> (University of Oxford)
 //	* Christian von Essen <christian.vonessen@imag.fr> (Verimag, Grenoble)
-//	* Steffen Maercker <maercker@tcs.inf.tu-dresden.de> (TU Dresden)
+//	* Steffen Maercker <steffen.maercker@tu-dresden.de> (TU Dresden)
 //	* Joachim Klein <klein@tcs.inf.tu-dresden.de> (TU Dresden)
 //	
 //------------------------------------------------------------------------------
@@ -38,8 +38,7 @@ import java.util.PrimitiveIterator.OfInt;
 import java.util.function.Function;
 
 import common.IterableStateSet;
-import common.iterable.IterableInt;
-import common.iterable.MappingIterator;
+import common.iterable.PrimitiveIterable;
 import explicit.rewards.MCRewards;
 import prism.PrismException;
 import prism.PrismNotSupportedException;
@@ -49,7 +48,7 @@ import prism.PrismNotSupportedException;
  * This is much faster to access than e.g. DTMCSimple and should also be more compact.
  * The catch is that you have to create the model all in one go and then can't modify it.
  */
-public class DTMCSparse extends DTMCExplicit
+public class DTMCSparse extends DTMCExplicit<Double>
 {
 	// Sparse matrix storing transition function (Steps)
 	/** Indices into probabilities/columns giving the start of the transitions for each state (distribution);
@@ -60,7 +59,7 @@ public class DTMCSparse extends DTMCExplicit
 	/** Probabilities for each transition (array of size numTransitions) */
 	private double probabilities[];
 
-	public DTMCSparse(final DTMC dtmc) {
+	public DTMCSparse(final DTMC<Double> dtmc) {
 		initialise(dtmc.getNumStates());
 		for (Integer state : dtmc.getDeadlockStates()) {
 			deadlocks.add(state);
@@ -96,7 +95,7 @@ public class DTMCSparse extends DTMCExplicit
 		predecessorRelation = dtmc.hasStoredPredecessorRelation() ? dtmc.getPredecessorRelation(null, false) : null;
 	}
 
-	public DTMCSparse(final DTMC dtmc, int[] permut) {
+	public DTMCSparse(final DTMC<Double> dtmc, int[] permut) {
 		initialise(dtmc.getNumStates());
 		for (Integer state : dtmc.getDeadlockStates()) {
 			deadlocks.add(permut[state]);
@@ -234,7 +233,15 @@ public class DTMCSparse extends DTMCExplicit
 	//--- DTMC ---
 
 	@Override
-	public void forEachTransition(int state, TransitionConsumer consumer)
+	public void forEachTransition(int state, TransitionConsumer<Double> consumer)
+	{
+		for (int col = rows[state], stop = rows[state+1]; col < stop; col++) {
+			consumer.accept(state, columns[col], probabilities[col]);
+		}
+	}
+
+	@Override
+	public void forEachDoubleTransition(int state, DoubleTransitionConsumer consumer)
 	{
 		for (int col = rows[state], stop = rows[state+1]; col < stop; col++) {
 			consumer.accept(state, columns[col], probabilities[col]);
@@ -331,7 +338,7 @@ public class DTMCSparse extends DTMCExplicit
 	}
 
 	@Override
-	public double mvMultRewSingle(final int state, final double[] vect, final MCRewards mcRewards)
+	public double mvMultRewSingle(final int state, final double[] vect, final MCRewards<Double> mcRewards)
 	{
 		double d = mcRewards.getStateReward(state);
 		for (int i=rows[state], stop=rows[state+1]; i < stop; i++) {
@@ -358,7 +365,7 @@ public class DTMCSparse extends DTMCExplicit
 	}
 
 	@Override
-	public void vmMultPowerSteadyState(double vect[], double result[], double[] diagsQ, double deltaT, IterableInt states)
+	public void vmMultPowerSteadyState(double vect[], double result[], double[] diagsQ, double deltaT, PrimitiveIterable.OfInt states)
 	{
 		// Recall that the generator matrix Q has entries
 		//       Q(s,s) = -sum_{t!=s} prob(s,t)
@@ -397,20 +404,20 @@ public class DTMCSparse extends DTMCExplicit
 	@Override
 	public String toString()
 	{
-		final Function<Integer, Entry<Integer, Distribution>> getDistribution = new Function<Integer, Entry<Integer, Distribution>>()
+		final Function<Integer, Entry<Integer, Distribution<Double>>> getDistribution = new Function<Integer, Entry<Integer, Distribution<Double>>>()
 		{
 			@Override
-			public final Entry<Integer, Distribution> apply(final Integer state)
+			public final Entry<Integer, Distribution<Double>> apply(final Integer state)
 			{
-				final Distribution distribution = new Distribution(getTransitionsIterator(state));
+				final Distribution<Double> distribution = new Distribution<>(getTransitionsIterator(state), getEvaluator());
 				return new AbstractMap.SimpleImmutableEntry<>(state, distribution);
 			}
 		};
 		String s = "trans: [ ";
-		final IterableStateSet states = new IterableStateSet(numStates);
-		final Iterator<Entry<Integer, Distribution>> distributions = new MappingIterator.From<>(states, getDistribution);
+		IterableStateSet states = new IterableStateSet(numStates);
+		Iterator<Entry<Integer, Distribution<Double>>> distributions = states.iterator().map(getDistribution);
 		while (distributions.hasNext()) {
-			final Entry<Integer, Distribution> dist = distributions.next();
+			final Entry<Integer, Distribution<Double>> dist = distributions.next();
 			s += dist.getKey() + ": " + dist.getValue();
 			if (distributions.hasNext()) {
 				s += ", ";
