@@ -132,6 +132,8 @@ public class StateModelChecker extends PrismComponent
 
 	// Do bisimulation minimisation before model checking?
 	protected boolean doBisim = false;
+	// Which bisimulation minimisation method to use?
+	protected int bisimMethod = 0;
 
 	// Do topological value iteration?
 	protected boolean doTopologicalValueIteration = false;
@@ -254,6 +256,7 @@ public class StateModelChecker extends PrismComponent
 		setGenStrat(other.getGenStrat());
 		setRestrictStratToReach(other.getRestrictStratToReach());
 		setDoBisim(other.getDoBisim());
+		setBisimMethod(other.getBisimMethod());
 		setDoIntervalIteration(other.getDoIntervalIteration());
 		setDoPmaxQuotient(other.getDoPmaxQuotient());
 	}
@@ -346,6 +349,14 @@ public class StateModelChecker extends PrismComponent
 	public void setDoBisim(boolean doBisim)
 	{
 		this.doBisim = doBisim;
+	}
+
+	/**
+	 * Specify which bisimulation minimisation method to use.
+	 */
+	public void setBisimMethod(int bisimMethod)
+	{
+		this.bisimMethod = bisimMethod;
 	}
 
 	/**
@@ -449,6 +460,14 @@ public class StateModelChecker extends PrismComponent
 	public boolean getDoBisim()
 	{
 		return doBisim;
+	}
+
+	/**
+	 * Which bisimulation minimisation method to use.
+	 */
+	public int getBisimMethod()
+	{
+		return bisimMethod;
 	}
 
 	/**
@@ -579,10 +598,22 @@ public class StateModelChecker extends PrismComponent
 			ArrayList<String> propNames = new ArrayList<String>();
 			ArrayList<BitSet> propBSs = new ArrayList<BitSet>();
 			Expression exprNew = checkMaximalPropositionalFormulas(model, expr.deepCopy(), propNames, propBSs);
-			Bisimulation<Value> bisim = new Bisimulation<>(this);
+			Bisimulation<Value> bisim;
+			switch (bisimMethod) {
+			case (Prism.BISIM_EXISTING):
+				bisim = new BisimulationMethodOld<Value>(this);
+				break;
+			case (Prism.BISIM_NEW):
+				bisim = new BisimulationMethodNew<Value>(this);
+				break;
+			default:
+				throw new PrismException("Unknown bisimulation minimisation method");
+			}
 			model = bisim.minimise(model, propNames, propBSs);
-			mainLog.println("Modified property: " + exprNew);
-			expr = exprNew;
+			if (bisim.minimised) {
+				mainLog.println("Modified property: " + exprNew);
+				expr = exprNew;
+			}
 			//model.exportToPrismExplicitTra("bisim.tra");
 			//model.exportStates(Prism.EXPORT_PLAIN, modelInfo.createVarList(), new PrismFileLog("bisim.sta"));
 		}
