@@ -3,6 +3,8 @@
 //	Copyright (c) 2002-
 //	Authors:
 //	* Dave Parker <d.a.parker@cs.bham.ac.uk> (University of Birmingham/Oxford)
+//	* Zainab Fatmi
+//	* Franck van Breugel
 //	
 //------------------------------------------------------------------------------
 //	
@@ -36,17 +38,13 @@ import java.util.Map.Entry;
 
 import parser.State;
 import prism.Evaluator;
+import prism.Prism;
 import prism.PrismComponent;
 import prism.PrismException;
 import prism.PrismNotSupportedException;
 
 /**
  * Class to perform bisimulation minimisation for explicit-state models.
- * 
- * @author Dave Parker
- * @author Christian von Essen
- * @author Zainab Fatmi
- * @author Franck van Breugel
  */
 public class Bisimulation<Value> extends PrismComponent
 {
@@ -55,13 +53,15 @@ public class Bisimulation<Value> extends PrismComponent
 	protected int[] partition;
 	protected int numBlocks;
 	protected MDPSimple<Value> mdp;
+	protected int bisimMethod;
 
 	/**
 	 * Construct a new Bisimulation object.
 	 */
-	public Bisimulation(PrismComponent parent) throws PrismException
+	public Bisimulation(PrismComponent parent, int bisimMethod) throws PrismException
 	{
 		super(parent);
+		this.bisimMethod = bisimMethod;
 	}
 
 	/**
@@ -87,20 +87,25 @@ public class Bisimulation<Value> extends PrismComponent
 	 * @param dtmc The DTMC
 	 * @param propNames Names of the propositions in {@code propBSs}
 	 * @param propBSs Propositions (satisfying sets of states) to be preserved by bisimulation.
+	 * @throws PrismException 
 	 */
-	private DTMC<Value> minimiseDTMC(DTMC<Value> dtmc, List<String> propNames, List<BitSet> propBSs)
+	private DTMC<Value> minimiseDTMC(DTMC<Value> dtmc, List<String> propNames, List<BitSet> propBSs) throws PrismException
 	{
 		// Create initial partition based on propositions
 		initialisePartitionInfo(dtmc, propBSs);
 		//printPartition(dtmc);
 
-		// Iterative splitting
-		/* boolean changed = true;
-		while (changed)
-			changed = splitDTMC(dtmc); */
-		
-		// Use the faster partitioning algorithm:
-		partition(dtmc);
+		if (bisimMethod == Prism.BISIM_EXISTING) {
+			// Iterative splitting
+			boolean changed = true;
+			while (changed)
+				changed = splitDTMC(dtmc);
+		} else if (bisimMethod == Prism.BISIM_NEW) {
+			// Use the faster partitioning algorithm:
+			partition(dtmc);
+		} else { // Unknown method (shouldn't happen)
+			throw new PrismException("Unknown bisimulation minimisation method");
+		}
 		mainLog.println("Minimisation: " + numStates + " to " + numBlocks + " States");
 		//printPartition(dtmc);
 

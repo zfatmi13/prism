@@ -81,8 +81,6 @@ public final class NonEmptySubBlock<Value> extends SubBlock<Value> {
 	 */
 	@Override
 	public boolean equals(Object object) {
-		// final double EPSILON = 1e-12;
-
 		if (object instanceof EmptySubBlock) {
 			return false;
 		} else {
@@ -93,8 +91,7 @@ public final class NonEmptySubBlock<Value> extends SubBlock<Value> {
 			} else {
 				for (Map.Entry<Integer, Value> entry : this.lifting.entrySet()) {
 					Value probability = other.lifting.get(entry.getKey());
-					// if (probability == null || Math.abs(entry.getValue() - probability) > EPSILON) {
-					if (probability == null || eval.equals(entry.getValue(), probability)) {
+					if (!eval.equals(entry.getValue(), probability)) {
 						return false;
 					}
 				}

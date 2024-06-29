@@ -205,6 +205,9 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 	// Method to use for (symbolic) state-space reachability
 	private int reachMethod = REACH_BFS;
 
+	// Method to use for bisimulation minimisation
+	private int bisimMethod = BISIM_EXISTING;
+
 	//------------------------------------------------------------------------------
 	// Parsers/translators/model checkers/simulators/etc.
 	//------------------------------------------------------------------------------
@@ -656,6 +659,14 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 		this.reachMethod = reachMethod;
 	}
 
+	public static int BISIM_EXISTING = 1;
+	public static int BISIM_NEW = 2;
+
+	public void setBisimMethod(int bisimMethod)
+	{
+		this.bisimMethod = bisimMethod;
+	}
+
 	// Get methods
 
 	/**
@@ -987,6 +998,11 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 	public int getReachMethod()
 	{
 		return reachMethod;
+	}
+
+	public int getBisimMethod()
+	{
+		return bisimMethod;
 	}
 
 	/**
@@ -4121,6 +4137,7 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 		mc.setGenStrat(genStrat);
 		mc.setRestrictStratToReach(restrictStratToReach);
 		mc.setDoBisim(doBisim);
+		mc.setBisimMethod(bisimMethod);
 
 		return mc;
 	}
