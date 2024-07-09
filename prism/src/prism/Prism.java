@@ -659,8 +659,8 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 		this.reachMethod = reachMethod;
 	}
 
-	public static int BISIM_EXISTING = 1;
-	public static int BISIM_NEW = 2;
+	public static final int BISIM_EXISTING = 1;
+	public static final int BISIM_NEW = 2;
 
 	public void setBisimMethod(int bisimMethod)
 	{

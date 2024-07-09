@@ -3,8 +3,6 @@
 //	Copyright (c) 2002-
 //	Authors:
 //	* Dave Parker <d.a.parker@cs.bham.ac.uk> (University of Birmingham/Oxford)
-//	* Zainab Fatmi
-//	* Franck van Breugel
 //	
 //------------------------------------------------------------------------------
 //	
@@ -30,15 +28,9 @@ package explicit;
 
 import java.util.ArrayList;
 import java.util.BitSet;
-import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
 
 import parser.State;
-import prism.Evaluator;
-import prism.Prism;
 import prism.PrismComponent;
 import prism.PrismException;
 import prism.PrismNotSupportedException;
@@ -46,117 +38,120 @@ import prism.PrismNotSupportedException;
 /**
  * Class to perform bisimulation minimisation for explicit-state models.
  */
-public class Bisimulation<Value> extends PrismComponent
+public abstract class Bisimulation<Value> extends PrismComponent
 {
 	// Local storage of partition info
 	protected int numStates;
 	protected int[] partition;
 	protected int numBlocks;
-	protected MDPSimple<Value> mdp;
-	protected int bisimMethod;
+	protected boolean minimised;
 
 	/**
 	 * Construct a new Bisimulation object.
 	 */
-	public Bisimulation(PrismComponent parent, int bisimMethod) throws PrismException
+	public Bisimulation(PrismComponent parent) throws PrismException
 	{
 		super(parent);
-		this.bisimMethod = bisimMethod;
 	}
 
 	/**
 	 * Perform bisimulation minimisation on a model.
-	 * @param model The model
+	 * @param model     The model
 	 * @param propNames Names of the propositions in {@code propBSs}
-	 * @param propBSs Propositions (satisfying sets of states) to be preserved by bisimulation.
+	 * @param propBSs   Propositions (satisfying sets of states) to be preserved by bisimulation.
 	 */
 	public Model<Value> minimise(Model<Value> model, List<String> propNames, List<BitSet> propBSs) throws PrismException
 	{
 		switch (model.getModelType()) {
-		case DTMC:
-			return minimiseDTMC((DTMC<Value>) model, propNames, propBSs);
-		case CTMC:
-			return minimiseCTMC((CTMC<Value>) model, propNames, propBSs);
-		default:
-			throw new PrismNotSupportedException("Bisimulation minimisation not yet supported for " + model.getModelType() + "s");
+			case DTMC:
+				return minimiseDTMC((DTMC<Value>) model, propNames, propBSs);
+			case CTMC:
+				return minimiseCTMC((CTMC<Value>) model, propNames, propBSs);
+			default:
+				throw new PrismNotSupportedException(
+						"Bisimulation minimisation not yet supported for " + model.getModelType() + "s");
 		}
 	}
 
 	/**
 	 * Perform bisimulation minimisation on a DTMC.
-	 * @param dtmc The DTMC
+	 * @param dtmc      The DTMC
 	 * @param propNames Names of the propositions in {@code propBSs}
-	 * @param propBSs Propositions (satisfying sets of states) to be preserved by bisimulation.
-	 * @throws PrismException 
+	 * @param propBSs   Propositions (satisfying sets of states) to be preserved by bisimulation.
 	 */
-	private DTMC<Value> minimiseDTMC(DTMC<Value> dtmc, List<String> propNames, List<BitSet> propBSs) throws PrismException
+	protected DTMC<Value> minimiseDTMC(DTMC<Value> dtmc, List<String> propNames, List<BitSet> propBSs)
 	{
-		// Create initial partition based on propositions
-		initialisePartitionInfo(dtmc, propBSs);
-		//printPartition(dtmc);
-
-		if (bisimMethod == Prism.BISIM_EXISTING) {
-			// Iterative splitting
-			boolean changed = true;
-			while (changed)
-				changed = splitDTMC(dtmc);
-		} else if (bisimMethod == Prism.BISIM_NEW) {
-			// Use the faster partitioning algorithm:
-			partition(dtmc);
-		} else { // Unknown method (shouldn't happen)
-			throw new PrismException("Unknown bisimulation minimisation method");
-		}
+		long timer;
+		timer = System.currentTimeMillis();
+		initialisePartitionInfo(dtmc, propBSs); /* Create initial partition based on propositions */
+		minimised = minimiseDTMC(dtmc);
+		if (minimised) {
+			DTMCSimple<Value> dtmcNew = buildReducedDTMC();
+			attachStatesAndLabels(dtmc, dtmcNew, propNames, propBSs);
+			timer = System.currentTimeMillis() - timer;
+			mainLog.println("Minimisation: " + numStates + " to " + numBlocks + " States");
+			mainLog.println("Time for bisimulation computation: " + timer / 1000.0 + " seconds.");
+			return dtmcNew;
+		} /* If the state space was not minimised, do not create a reduced model */
+		timer = System.currentTimeMillis() - timer;
 		mainLog.println("Minimisation: " + numStates + " to " + numBlocks + " States");
-		//printPartition(dtmc);
-
-		// Build reduced model
-		DTMCSimple<Value> dtmcNew = new DTMCSimple<>(numBlocks);
-		for (int i = 0; i < numBlocks; i++) {
-			for (Map.Entry<Integer, Value> e : mdp.getChoice(i, 0)) {
-				dtmcNew.setProbability(i, e.getKey(), e.getValue());
-			}
-		}
-		attachStatesAndLabels(dtmc, dtmcNew, propNames, propBSs);
-
-		return dtmcNew;
+		mainLog.println("Time for bisimulation computation: " + timer / 1000.0 + " seconds.");
+		return dtmc;
 	}
 
 	/**
 	 * Perform bisimulation minimisation on a CTMC.
-	 * @param ctmc The CTMC
+	 * @param ctmc      The CTMC
 	 * @param propNames Names of the propositions in {@code propBSs}
-	 * @param propBSs Propositions (satisfying sets of states) to be preserved by bisimulation.
+	 * @param propBSs   Propositions (satisfying sets of states) to be preserved by bisimulation.
 	 */
-	private CTMC<Value> minimiseCTMC(CTMC<Value> ctmc, List<String> propNames, List<BitSet> propBSs)
+	protected CTMC<Value> minimiseCTMC(CTMC<Value> ctmc, List<String> propNames, List<BitSet> propBSs)
 	{
-		// Create initial partition based on propositions
-		initialisePartitionInfo(ctmc, propBSs);
-		//printPartition(ctmc);
-
-		// Iterative splitting
-		boolean changed = true;
-		while (changed)
-			changed = splitDTMC(ctmc);
+		long timer;
+		timer = System.currentTimeMillis();
+		initialisePartitionInfo(ctmc, propBSs); /* Create initial partition based on propositions */
+		minimised = minimiseDTMC(ctmc);
+		if (minimised) {
+			CTMCSimple<Value> ctmcNew = buildReducedCTMC();
+			attachStatesAndLabels(ctmc, ctmcNew, propNames, propBSs);
+			timer = System.currentTimeMillis() - timer;
+			mainLog.println("Minimisation: " + numStates + " to " + numBlocks + " States");
+			mainLog.println("Time for bisimulation computation: " + timer / 1000.0 + " seconds.");
+			return ctmcNew;
+		} /* If the state space was not minimised, do not create a reduced model */
+		timer = System.currentTimeMillis() - timer;
 		mainLog.println("Minimisation: " + numStates + " to " + numBlocks + " States");
-		//printPartition(ctmc);
-
-		// Build reduced model
-		CTMCSimple<Value> ctmcNew = new CTMCSimple<>(numBlocks);
-		for (int i = 0; i < numBlocks; i++) {
-			for (Map.Entry<Integer, Value> e : mdp.getChoice(i, 0)) {
-				ctmcNew.setProbability(i, e.getKey(), e.getValue());
-			}
-		}
-		attachStatesAndLabels(ctmc, ctmcNew, propNames, propBSs);
-
-		return ctmcNew;
+		mainLog.println("Time for bisimulation computation: " + timer / 1000.0 + " seconds.");
+		return ctmc;
 	}
+
+	/**
+	 * Partitions the states of the specified labelled Markov chain, given the
+	 * intial partition, updating {@code numBlocks} and {@code partition}.
+	 * States are in the same set, that is, are mapped to the same integer, if
+	 * and only if they are probabilistic bisimilar.
+	 * @param dtmc The DTMC.
+	 * @return True if the state space is minimised, false otherwise.
+	 */
+	protected abstract boolean minimiseDTMC(DTMC<Value> dtmc);
+
+	/**
+	 * Build the reduced model.
+	 * @return The reduced DTMC.
+	 */
+	protected abstract DTMCSimple<Value> buildReducedDTMC();
+
+	/**
+	 * Build the reduced model.
+	 * @return The reduced CTMC.
+	 */
+	protected abstract CTMCSimple<Value> buildReducedCTMC();
 
 	/**
 	 * Construct the initial partition based on a set of proposition bitsets.
 	 * Store info in {@code numStates}, {@code numBlocks} and {@code partition}.
 	 */
-	private void initialisePartitionInfo(Model<Value> model, List<BitSet> propBSs)
+	protected void initialisePartitionInfo(Model<Value> model, List<BitSet> propBSs)
 	{
 		BitSet bs1, bs0;
 		numStates = model.getNumStates();
@@ -176,7 +171,7 @@ public class Bisimulation<Value> extends PrismComponent
 			for (int j = 0; j < m; j++) {
 				bs1 = all.get(j);
 				bs0 = (BitSet) bs1.clone();
- 				bs0.andNot(bs);
+				bs0.andNot(bs);
 				bs1.and(bs);
 				if (bs1.isEmpty()) {
 					all.set(j, bs0);
@@ -198,181 +193,16 @@ public class Bisimulation<Value> extends PrismComponent
 	}
 
 	/**
-	 * Perform a split of the current partition, if possible, updating {@code numBlocks} and {@code partition}.
-	 * @return whether or not the partition was split 
-	 */
-	private boolean splitDTMC(DTMC<Value> dtmc)
-	{
-		int s, a, i, numBlocksNew, numChoicesOld;
-		Distribution<Value> distrNew;
-		int partitionNew[];
-
-		partitionNew = new int[numStates];
-		numBlocksNew = 0;
-		// Compute the signature for each state (i.e. the distribution for outgoing
-		// transitions, lifted to the current partition)
-		// For convenience, we just store them as an MDP, with action label equal to the index of the block
-		mdp = new MDPSimple<>(numBlocks);
-		for (s = 0; s < numStates; s++) {
-			// Build lifted distribution
-			Iterator<Map.Entry<Integer, Value>> iter = dtmc.getTransitionsIterator(s);
-			distrNew = new Distribution<>(dtmc.getEvaluator());
-			while (iter.hasNext()) {
-				Map.Entry<Integer, Value> e = iter.next();
-				distrNew.add(partition[e.getKey()], e.getValue());
-			}
-			// Store in MDP, update new partition
-			a = partition[s];
-			numChoicesOld = mdp.getNumChoices(a);
-			i = mdp.addChoice(a, distrNew);
-			if (i == numChoicesOld)
-				mdp.setAction(a, i, numBlocksNew++);
-			partitionNew[s] = (Integer) mdp.getAction(a, i);
-		}
-		// Debug info
-		//mainLog.println("New partition: " + java.util.Arrays.toString(partitionNew));
-		//mainLog.println("Signatures MDP: " + mdp.infoString());
-		//mainLog.println("Signatures MDP: " + mdp);
-		//try { mdp.exportToDotFile("mdp.dot"); } catch (PrismException e) {}
-		// Update info
-		boolean changed = numBlocks != numBlocksNew;
-		if (changed) {
-			// Note, once converged, we keep the partition from the previous iter
-			// because the transition info in the MDP is in terms of this
-			partition = partitionNew;
-			numBlocks = numBlocksNew;
-		}
-
-		return changed;
-	}
-	
-	/**
-	 * Partitions the states of the specified labelled Markov chain, updating
-	 * {@code numBlocks} and {@code partition}. States are in the same set, that is,
-	 * are mapped to the same integer, if and only if they are probabilistic
-	 * bisimilar.
-	 * 
-	 * @param dtmc a labelled Markov chain
-	 */
-	private void partition(DTMC<Value> dtmc) {
-
-		/*
-		 * transitions.get(s).get(t) is the probability of transitioning from state s to
-		 * state t
-		 */
-		ArrayList<Map<Integer, Value>> transitions = new ArrayList<Map<Integer, Value>>(numStates);
-		for (int source = 0; source < numStates; source++) {
-			Map<Integer, Value> successors = new HashMap<Integer, Value>();
-			Iterator<Entry<Integer, Value>> iter = dtmc.getTransitionsIterator(source);
-			while (iter.hasNext()) {
-				Entry<Integer, Value> transition = iter.next();
-				successors.put(transition.getKey(), transition.getValue());
-			}
-			transitions.add(successors);
-		}
-		Evaluator<Value> eval = dtmc.getEvaluator();
-
-		/*
-		 * the block used as splitters
-		 */
-		BitSet splitters = new BitSet(numBlocks);
-		splitters.flip(0, numBlocks - 1); // exclude last block which contains all states without a label
-
-		int numberOfBlocksOld;
-		do {
-			numberOfBlocksOld = numBlocks;
-			numBlocks = 0;
-
-			int[] partitionOld = partition;
-			partition = new int[numStates];
-
-			BitSet splittersOld = splitters;
-			splitters = new BitSet(numberOfBlocksOld);
-
-			/*
-			 * blocks.get(b) is the list of sub-blocks that partition block b
-			 */
-			List<List<SubBlock<Value>>> blocks = new ArrayList<List<SubBlock<Value>>>(numberOfBlocksOld);
-			for (int b = 0; b < numberOfBlocksOld; b++) {
-				List<SubBlock<Value>> empty = new ArrayList<SubBlock<Value>>();
-				blocks.add(empty);
-			}
-
-			for (int source = 0; source < numStates; source++) {
-
-				/*
-				 * sub-block that contains state source
-				 */
-				SubBlock<Value> subBlock = null;
-				for (Map.Entry<Integer, Value> entry : transitions.get(source).entrySet()) {
-					Integer target = entry.getKey();
-					int blockOfTarget = partitionOld[target];
-					Value probabilityOld;
-					if (splittersOld.get(blockOfTarget)) {
-						if (subBlock == null) {
-							subBlock = new NonEmptySubBlock<Value>(eval);
-							probabilityOld = eval.zero();
-						} else {
-							probabilityOld = subBlock.get(blockOfTarget);
-							if (probabilityOld == null) {
-								probabilityOld = eval.zero();
-							}
-						}
-						Value probability = entry.getValue();
-						subBlock.put(blockOfTarget, eval.add(probabilityOld, probability));
-					}
-				}
-				if (subBlock == null) {
-					subBlock = new EmptySubBlock<Value>();
-				}
-
-				int blockOfSource = partitionOld[source];
-				List<SubBlock<Value>> subBlocks = blocks.get(blockOfSource);
-				int index = subBlocks.indexOf(subBlock);
-				if (index == -1) { // there is no sub-block with the same lifting as state source
-					subBlock.setID(numBlocks);
-					subBlocks.add(subBlock);
-					partition[source] = numBlocks;
-					if (subBlocks.size() > 1) { // first sub-block is not used as a splitter in the next refinement step
-						splitters.set(numBlocks);
-					}
-					numBlocks++;
-				} else {
-					partition[source] = subBlocks.get(index).getID();
-				}
-			}
-		} while (numBlocks != numberOfBlocksOld);
-	}
-
-	/**
-	 * Display the current partition, showing the states in each block.
-	 */
-	@SuppressWarnings("unused")
-	private void printPartition(Model<Value> model)
-	{
-		for (int i = 0; i < numBlocks; i++) {
-			mainLog.print(i + ":");
-			for (int j = 0; j < numStates; j++)
-				if (partition[j] == i)
-					if (model.getStatesList() != null)
-						mainLog.print(" " + model.getStatesList().get(j));
-					else
-						mainLog.print(" " + j);
-			mainLog.println();
-		}
-	}
-
-	/**
 	 * Attach a list of states to the minimised model by adding a representative state
 	 * from the original model.
-	 * Also attach information about the propositions (used for bisimulation minimisation)
-	 * to the minimised model, in the form of labels (stored as BitSets).
-	 * @param model The original model
-	 * @param modelNew The minimised model
+	 * Also attach information about the propositions (used for bisimulation
+	 * minimisation) to the minimised model, in the form of labels (stored as BitSets).
+	 * @param model     The original model
+	 * @param modelNew  The minimised model
 	 * @param propNames The names of the propositions
-	 * @param propBSs Satisfying states (of the minimised model) for the propositions
+	 * @param propBSs   Satisfying states (of the minimised model) for the propositions
 	 */
-	private void attachStatesAndLabels(Model<Value> model, ModelExplicit<Value> modelNew, List<String> propNames, List<BitSet> propBSs)
+	protected void attachStatesAndLabels(Model<Value> model, ModelExplicit<Value> modelNew, List<String> propNames, List<BitSet> propBSs)
 	{
 		// Attach states
 		if (model.getStatesList() != null) {
@@ -398,5 +228,13 @@ public class Bisimulation<Value> extends PrismComponent
 				propBSnew.set(partition[j]);
 			modelNew.addLabel(propName, propBSnew);
 		}
+	}
+
+	/**
+	 * Did bisimulation minimisation reduce the state space of the model?
+	 */
+	public boolean minimised()
+	{
+		return minimised;
 	}
 }

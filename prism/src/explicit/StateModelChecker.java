@@ -76,6 +76,7 @@ import prism.ModelInfo;
 import prism.ModelType;
 import prism.OpRelOpBound;
 import prism.Prism;
+import prism.Prism.ModelBuildType;
 import prism.PrismComponent;
 import prism.PrismException;
 import prism.PrismFileLog;
@@ -592,10 +593,22 @@ public class StateModelChecker extends PrismComponent
 			ArrayList<String> propNames = new ArrayList<String>();
 			ArrayList<BitSet> propBSs = new ArrayList<BitSet>();
 			Expression exprNew = checkMaximalPropositionalFormulas(model, expr.deepCopy(), propNames, propBSs);
-			Bisimulation<Value> bisim = new Bisimulation<>(this, bisimMethod);
+			Bisimulation<Value> bisim;
+			switch (bisimMethod) {
+			case (Prism.BISIM_EXISTING):
+				bisim = new BisimulationMethodOld<Value>(this);
+				break;
+			case (Prism.BISIM_NEW):
+				bisim = new BisimulationMethodNew<Value>(this);
+				break;
+			default:
+				throw new PrismException("Unknown bisimulation minimisation method");
+			}
 			model = bisim.minimise(model, propNames, propBSs);
-			mainLog.println("Modified property: " + exprNew);
-			expr = exprNew;
+			if (bisim.minimised) {
+				mainLog.println("Modified property: " + exprNew);
+				expr = exprNew;
+			}
 			//model.exportToPrismExplicitTra("bisim.tra");
 			//model.exportStates(Prism.EXPORT_PLAIN, modelInfo.createVarList(), new PrismFileLog("bisim.sta"));
 		}
