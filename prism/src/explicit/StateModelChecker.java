@@ -83,7 +83,6 @@ import prism.Filter;
 import prism.ModelInfo;
 import prism.ModelType;
 import prism.Prism;
-import prism.Prism.ModelBuildType;
 import prism.PrismComponent;
 import prism.PrismException;
 import prism.PrismFileLog;
