@@ -2075,9 +2075,16 @@ public class PrismCL implements PrismModelListener
 				} else if (sw.equals("bfs")) {
 					prism.setReachMethod(Prism.REACH_BFS);
 				}
-				// enable bisimulation minimisation before model checking (hidden option)
+				// enable bisimulation minimisation before model checking (hidden options)
 				else if (sw.equals("bisim")) {
 					prism.setDoBisim(true);
+				} else if (sw.equals("bisimmethod")) {
+					if (i < args.length - 1) {
+						prism.setDoBisim(true);
+						prism.setBisimMethod(args[++i]);
+					} else {
+						errorAndExit("No name/class specified for -" + sw + " switch");
+					}
 				}
 
 				// Other switches - pass to PrismSettings

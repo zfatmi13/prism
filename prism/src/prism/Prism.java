@@ -191,6 +191,8 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 	protected boolean restrictStratToReach = true;
 	// Do bisimulation minimisation before model checking?
 	protected boolean doBisim = false;
+	// Method to use for bisimulation minimisation
+	protected String bisimMethod = null;
 
 	// A few miscellaneous options (i.e. defunct/hidden/undocumented/etc.)
 	// See constructor below for default values
@@ -720,6 +722,11 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 		this.reachMethod = reachMethod;
 	}
 
+	public void setBisimMethod(String bisimMethod)
+	{
+		this.bisimMethod = bisimMethod;
+	}
+
 	// Get methods
 
 	/**
@@ -1031,6 +1038,11 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 	public int getReachMethod()
 	{
 		return reachMethod;
+	}
+
+	public String getBisimMethod()
+	{
+		return bisimMethod;
 	}
 
 	/**
@@ -4285,6 +4297,7 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 		mc.setGenStrat(genStrat);
 		mc.setRestrictStratToReach(restrictStratToReach);
 		mc.setDoBisim(doBisim);
+		mc.setBisimMethod(bisimMethod);
 
 		return mc;
 	}
