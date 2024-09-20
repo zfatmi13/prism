@@ -44,7 +44,7 @@ import parser.type.TypeInterval;
  * e.g., subclasses of {@link explicit.Model}{@code <Value>}. Such classes
  * store values as an arbitrary type {@code Value} but also need to provide
  * an {@link Evaluator} object to manipulate them. This approach is intended to
- * allow existing types (e.g. Double, BigRational, Function) to be used for for
+ * allow existing types (e.g. Double, BigRational, Function) to be used for
  * generic models without the need for creating additional wrappers.
  * 
  * For evaluators where values are non-scalar and represent a set of different
@@ -87,6 +87,11 @@ public interface Evaluator<Value>
 	 * Get the value one.
 	 */
 	public Value one();
+
+	/**
+	 * Get the value infinity.
+	 */
+	public Value infinity();
 
 	/**
 	 * Check if a value {@code x} is equal to zero.
@@ -291,6 +296,12 @@ public interface Evaluator<Value>
 		}
 
 		@Override
+		public Double infinity()
+		{
+			return Double.POSITIVE_INFINITY;
+		}
+
+		@Override
 		public boolean isZero(Double x)
 		{
 			return x == 0.0;
@@ -436,6 +447,12 @@ public interface Evaluator<Value>
 		}
 
 		@Override
+		public BigRational infinity()
+		{
+			return BigRational.INF;
+		}
+
+		@Override
 		public boolean isZero(BigRational x)
 		{
 			return x.equals(BigRational.ZERO);
@@ -574,6 +591,12 @@ public interface Evaluator<Value>
 		}
 
 		@Override
+		public Function infinity()
+		{
+			return functionFactory.getInf();
+		}
+
+		@Override
 		public boolean isZero(Function x)
 		{
 			// Technically, not quite right since it could miss some cases
@@ -693,6 +716,7 @@ public interface Evaluator<Value>
 		private static final Evaluator<Interval<Double>> EVALUATOR_DOUBLE_INTERVAL = new EvaluatorDoubleInterval();
 		private static final Interval<Double> ZERO = new Interval<Double>(0.0, 0.0);
 		private static final Interval<Double> ONE = new Interval<Double>(1.0, 1.0);
+		private static final Interval<Double> INFINITY = new Interval<Double>(Double.POSITIVE_INFINITY, Double.POSITIVE_INFINITY);
 
 		@Override
 		public Interval<Double> zero()
@@ -704,6 +728,12 @@ public interface Evaluator<Value>
 		public Interval<Double> one()
 		{
 			return ONE;
+		}
+
+		@Override
+		public Interval<Double> infinity()
+		{
+			return INFINITY;
 		}
 
 		@Override
