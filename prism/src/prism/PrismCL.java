@@ -2044,6 +2044,12 @@ public class PrismCL implements PrismModelListener
 					prism.setBisimMethod(Prism.BISIM_EXISTING);
 				} else if (sw.equals("new")) {
 					prism.setBisimMethod(Prism.BISIM_NEW);
+				} else if (sw.equals("robust")) {
+					prism.setBisimMethod(Prism.BISIM_ROBUST);
+				} else if (sw.equals("robust1")) {
+					prism.setBisimMethod(Prism.BISIM_ROBUST1);
+				} else if (sw.equals("robust2")) {
+					prism.setBisimMethod(Prism.BISIM_ROBUST2);
 				}
 
 				// Other switches - pass to PrismSettings

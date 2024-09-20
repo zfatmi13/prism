@@ -662,6 +662,9 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 
 	public static final int BISIM_EXISTING = 1;
 	public static final int BISIM_NEW = 2;
+	public static final int BISIM_ROBUST = 3;
+	public static final int BISIM_ROBUST1 = 4;
+	public static final int BISIM_ROBUST2 = 5;
 
 	public void setBisimMethod(int bisimMethod)
 	{

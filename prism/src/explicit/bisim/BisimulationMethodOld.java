@@ -24,11 +24,12 @@
 //	
 //==============================================================================
 
-package explicit;
+package explicit.bisim;
 
 import java.util.Iterator;
 import java.util.Map;
 
+import explicit.*;
 import prism.PrismComponent;
 import prism.PrismException;
 
@@ -57,6 +58,11 @@ public class BisimulationMethodOld<Value> extends Bisimulation<Value>
 			changed = splitDTMC(dtmc);
 		// printPartition(dtmc);
 		return (numStates != numBlocks);
+	}
+
+	@Override
+	protected boolean minimiseCTMC(CTMC<Value> ctmc) {
+		return minimiseDTMC(ctmc);
 	}
 
 	@Override
@@ -134,23 +140,5 @@ public class BisimulationMethodOld<Value> extends Bisimulation<Value>
 		}
 
 		return changed;
-	}
-
-	/**
-	 * Display the current partition, showing the states in each block.
-	 */
-	@SuppressWarnings("unused")
-	private void printPartition(Model<Value> model)
-	{
-		for (int i = 0; i < numBlocks; i++) {
-			mainLog.print(i + ":");
-			for (int j = 0; j < numStates; j++)
-				if (partition[j] == i)
-					if (model.getStatesList() != null)
-						mainLog.print(" " + model.getStatesList().get(j));
-					else
-						mainLog.print(" " + j);
-			mainLog.println();
-		}
 	}
 }

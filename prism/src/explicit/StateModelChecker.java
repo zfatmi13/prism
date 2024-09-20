@@ -40,6 +40,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.Vector;
 
+import explicit.bisim.*;
 import explicit.rewards.ConstructRewards;
 import explicit.rewards.MCRewards;
 import explicit.rewards.MDPRewards;
@@ -606,11 +607,20 @@ public class StateModelChecker extends PrismComponent
 			case (Prism.BISIM_NEW):
 				bisim = new BisimulationMethodNew<Value>(this);
 				break;
+			case (Prism.BISIM_ROBUST):
+				bisim = new RobustBisimulation<Value>(this);
+				break;
+			case (Prism.BISIM_ROBUST1):
+				bisim = new Robust1<Value>(this);
+				break;
+			case (Prism.BISIM_ROBUST2):
+				bisim = new Robust2<Value>(this);
+				break;
 			default:
 				throw new PrismException("Unknown bisimulation minimisation method");
 			}
 			model = bisim.minimise(model, propNames, propBSs);
-			if (bisim.minimised) {
+			if (bisim.minimised()) {
 				mainLog.println("Modified property: " + exprNew);
 				expr = exprNew;
 			}

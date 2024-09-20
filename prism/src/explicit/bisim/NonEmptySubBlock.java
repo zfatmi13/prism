@@ -25,11 +25,12 @@
 //	
 //==============================================================================
 
-package explicit;
+package explicit.bisim;
 
 import java.util.HashMap;
 import java.util.Map;
 
+import explicit.SubBlock;
 import prism.Evaluator;
 
 /**

@@ -25,7 +25,7 @@
 //	
 //==============================================================================
 
-package explicit;
+package explicit.bisim;
 
 import java.util.ArrayList;
 import java.util.BitSet;
@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import explicit.*;
 import prism.Evaluator;
 import prism.PrismComponent;
 import prism.PrismException;
@@ -42,29 +43,76 @@ import prism.PrismException;
 /**
  * Method to perform bisimulation minimisation for explicit-state models.
  */
-public class BisimulationMethodNew<Value> extends Bisimulation<Value>
-{
-	/**
-	 * The signatures of each block in the final partition.
-	 */
-	private HashMap<Integer, Distribution<Value>> probabilities;
+public class BisimulationMethodNew<Value> extends Bisimulation<Value> {
+
+	/** The signatures of each block in the final partition. */
+	private Map<Integer, Distribution<Value>> probabilities;
 
 	/**
 	 * Construct a new BisimulationMethodNew object.
 	 */
-	public BisimulationMethodNew(PrismComponent parent) throws PrismException
-	{
+	public BisimulationMethodNew(PrismComponent parent) throws PrismException {
 		super(parent);
 	}
 
 	@Override
-	protected boolean minimiseDTMC(DTMC<Value> dtmc)
-	{
+	protected boolean minimiseDTMC(DTMC<Value> dtmc) {
 		Evaluator<Value> eval = dtmc.getEvaluator();
+		bisimilarity(dtmc, eval, 1);
+		if (numStates == numBlocks) {
+			return false;
+		}
+		lifting(dtmc, eval);
+		// printProbabilities(dtmc, eval);
+		return true;
+	}
 
-		/* the blocks used as splitters, exclude the last block which contains all states without a label */
+	@Override
+	protected boolean minimiseCTMC(CTMC<Value> ctmc) {
+		Evaluator<Value> eval = ctmc.getEvaluator();
+		bisimilarity(ctmc, eval, 0);
+		if (numStates == numBlocks) {
+			return false;
+		}
+		lifting(ctmc, eval);
+		// printProbabilities(ctmc, eval);
+		return true;
+	}
+
+	@Override
+	protected DTMCSimple<Value> buildReducedDTMC() {
+		DTMCSimple<Value> dtmcNew = new DTMCSimple<>(numBlocks);
+		for (int i = 0; i < numBlocks; i++) {
+			for (Map.Entry<Integer, Value> e : probabilities.get(i)) {
+				dtmcNew.setProbability(i, e.getKey(), e.getValue());
+			}
+		}
+		return dtmcNew;
+	}
+
+	@Override
+	protected CTMCSimple<Value> buildReducedCTMC() {
+		CTMCSimple<Value> ctmcNew = new CTMCSimple<>(numBlocks);
+		for (int i = 0; i < numBlocks; i++) {
+			for (Map.Entry<Integer, Value> e : probabilities.get(i)) {
+				ctmcNew.setProbability(i, e.getKey(), e.getValue());
+			}
+		}
+		return ctmcNew;
+	}
+
+	/**
+	 * Computes probabilistic bisimilarity for the specified labelled Markov chain.
+	 * 
+	 * @param model The DTMC or CTMC.
+	 * @param eval The evaluator to manipulate values.
+	 * @param dtmc 1 if the model is a DTMC and 0 if it is a CTMC.
+	 */
+	protected void bisimilarity(DTMC<Value> model, Evaluator<Value> eval, int dtmc) {
+		/* the blocks used as splitters */
 		BitSet splitters = new BitSet(numBlocks);
-		splitters.flip(0, numBlocks - 1);
+		/* if the model is a DTMC, exclude the last block which contains all states without a label */
+		splitters.flip(0, numBlocks - dtmc);
 
 		int numberOfBlocksOld;
 		int[] partitionOld;
@@ -86,7 +134,7 @@ public class BisimulationMethodNew<Value> extends Bisimulation<Value>
 
 			for (int source = 0; source < numStates; source++) {
 				SubBlock<Value> subBlock = null; /* sub-block that contains the source state */
-				Iterator<Entry<Integer, Value>> iter = dtmc.getTransitionsIterator(source);
+				Iterator<Entry<Integer, Value>> iter = model.getTransitionsIterator(source);
 				while (iter.hasNext()) {
 					Entry<Integer, Value> transition = iter.next();
 					int blockOfTarget = partitionOld[transition.getKey()];
@@ -125,11 +173,17 @@ public class BisimulationMethodNew<Value> extends Bisimulation<Value>
 				}
 			}
 		} while (numBlocks != numberOfBlocksOld);
+	}
 
-		if (numStates == numBlocks) {
-			return false;
-		}
-		/* probabilities.get(s) is the final lifting of the probability distribution of states in block s */
+	/**
+	 * Computes the signatures (lifting of the probability distribution) of each
+	 * block in the current partition and stores it in {@code probabilities}.
+	 * 
+	 * @param dtmc The DTMC.
+	 * @param eval the evaluator to manipulate values.
+	 */
+	protected void lifting(DTMC<Value> dtmc, Evaluator<Value> eval) {
+		/* probabilities.get(s) is the signature of states in block s */
 		probabilities = new HashMap<Integer, Distribution<Value>>(numBlocks);
 		for (int source = 0; source < numStates; source++) {
 			int blockOfSource = partition[source];
@@ -143,30 +197,38 @@ public class BisimulationMethodNew<Value> extends Bisimulation<Value>
 				probabilities.put(blockOfSource, distrNew);
 			}
 		}
-		return true;
 	}
 
-	@Override
-	protected DTMCSimple<Value> buildReducedDTMC()
-	{
-		DTMCSimple<Value> dtmcNew = new DTMCSimple<>(numBlocks);
-		for (int i = 0; i < numBlocks; i++) {
-			for (Map.Entry<Integer, Value> e : probabilities.get(i)) {
-				dtmcNew.setProbability(i, e.getKey(), e.getValue());
+	/**
+	 * Computes the signatures (lifting of the probability distribution) of each
+	 * block in the current partition and stores it in {@code probabilities}.
+	 * 
+	 * @param dtmc The DTMC.
+	 * @param eval the evaluator to manipulate values.
+	 */
+	protected void printProbabilities(DTMC<Value> dtmc, Evaluator<Value> eval) {
+		for (int block = 0; block < numBlocks; block++) {
+			Distribution<Value> distribution = probabilities.get(block);
+			for (int state = 0; state < numStates; state++) {
+				if (partition[state] == block) {
+					Distribution<Value> distrNew = new Distribution<Value>(eval);
+					Iterator<Entry<Integer, Value>> iter = dtmc.getTransitionsIterator(state);
+					while (iter.hasNext()) {
+						Entry<Integer, Value> transition = iter.next();
+						distrNew.add(partition[transition.getKey()], transition.getValue());
+					}
+					if (distrNew.equals(distribution)) {
+					} else if (distrNew.size() != distribution.size()) {
+						mainLog.println(block + ": different size");
+					} else {
+						for (Map.Entry<Integer, Value> e : distribution) {
+							if (!eval.equals(distrNew.get(e.getKey()), e.getValue())) {
+								mainLog.println(block + ": " + eval.subtract(distrNew.get(e.getKey()), e.getValue()) + " ");
+							}
+						}
+					}
+				}
 			}
 		}
-		return dtmcNew;
-	}
-
-	@Override
-	protected CTMCSimple<Value> buildReducedCTMC()
-	{
-		CTMCSimple<Value> ctmcNew = new CTMCSimple<>(numBlocks);
-		for (int i = 0; i < numBlocks; i++) {
-			for (Map.Entry<Integer, Value> e : probabilities.get(i)) {
-				ctmcNew.setProbability(i, e.getKey(), e.getValue());
-			}
-		}
-		return ctmcNew;
 	}
 }

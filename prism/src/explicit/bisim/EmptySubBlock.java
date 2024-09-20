@@ -25,7 +25,9 @@
 //	
 //==============================================================================
 
-package explicit;
+package explicit.bisim;
+
+import explicit.SubBlock;
 
 /**
  * An empty sub-block.

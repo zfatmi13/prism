@@ -24,12 +24,18 @@
 //	
 //==============================================================================
 
-package explicit;
+package explicit.bisim;
 
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
 
+import explicit.CTMC;
+import explicit.CTMCSimple;
+import explicit.DTMC;
+import explicit.DTMCSimple;
+import explicit.Model;
+import explicit.ModelExplicit;
 import parser.State;
 import prism.PrismComponent;
 import prism.PrismException;
@@ -85,6 +91,7 @@ public abstract class Bisimulation<Value> extends PrismComponent
 		timer = System.currentTimeMillis();
 		initialisePartitionInfo(dtmc, propBSs); /* Create initial partition based on propositions */
 		minimised = minimiseDTMC(dtmc);
+		// printProbabilities();
 		if (minimised) {
 			DTMCSimple<Value> dtmcNew = buildReducedDTMC();
 			attachStatesAndLabels(dtmc, dtmcNew, propNames, propBSs);
@@ -110,7 +117,8 @@ public abstract class Bisimulation<Value> extends PrismComponent
 		long timer;
 		timer = System.currentTimeMillis();
 		initialisePartitionInfo(ctmc, propBSs); /* Create initial partition based on propositions */
-		minimised = minimiseDTMC(ctmc);
+		// printProbabilities();
+		minimised = minimiseCTMC(ctmc);
 		if (minimised) {
 			CTMCSimple<Value> ctmcNew = buildReducedCTMC();
 			attachStatesAndLabels(ctmc, ctmcNew, propNames, propBSs);
@@ -127,13 +135,23 @@ public abstract class Bisimulation<Value> extends PrismComponent
 
 	/**
 	 * Partitions the states of the specified labelled Markov chain, given the
-	 * intial partition, updating {@code numBlocks} and {@code partition}.
+	 * initial partition, updating {@code numBlocks} and {@code partition}.
 	 * States are in the same set, that is, are mapped to the same integer, if
 	 * and only if they are probabilistic bisimilar.
 	 * @param dtmc The DTMC.
 	 * @return True if the state space is minimised, false otherwise.
 	 */
 	protected abstract boolean minimiseDTMC(DTMC<Value> dtmc);
+
+	/**
+	 * Partitions the states of the specified labelled Markov chain, given the
+	 * initial partition, updating {@code numBlocks} and {@code partition}.
+	 * States are in the same set, that is, are mapped to the same integer, if
+	 * and only if they are probabilistic bisimilar.
+	 * @param ctmc The CTMC.
+	 * @return True if the state space is minimised, false otherwise.
+	 */
+	protected abstract boolean minimiseCTMC(CTMC<Value> ctmc);
 
 	/**
 	 * Build the reduced model.
@@ -236,5 +254,41 @@ public abstract class Bisimulation<Value> extends PrismComponent
 	public boolean minimised()
 	{
 		return minimised;
+	}
+
+	/**
+	 * Display the current partition, showing the states in each block.
+	 */
+	@SuppressWarnings("unused")
+	private void printPartition(Model<Value> model)
+	{
+		for (int i = 0; i < numBlocks; i++) {
+			mainLog.print(i + ":");
+			for (int j = 0; j < numStates; j++)
+				if (partition[j] == i)
+					if (model.getStatesList() != null)
+						mainLog.print(" " + model.getStatesList().get(j));
+					else
+						mainLog.print(" " + j);
+			mainLog.println();
+		}
+	}
+
+	/**
+	 * Display the current partition, showing the states in each block.
+	 */
+	@SuppressWarnings("unused")
+	private void printProbabilities()
+	{
+		for (int i = 0; i < numBlocks; i++) {
+			mainLog.print(i + ":");
+			int count = 0;
+			for (int j = 0; j < numStates; j++)
+				if (partition[j] == i)
+					mainLog.print(" " + j);
+					// count++;
+			// mainLog.println(" " + count);
+			mainLog.println();
+		}
 	}
 }
