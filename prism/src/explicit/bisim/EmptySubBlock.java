@@ -69,4 +69,16 @@ public final class EmptySubBlock<Value> extends SubBlock<Value> {
     public void put(Integer block, Value probability) {
         throw new UnsupportedOperationException();
     }
+
+    /**
+     * Throws an exception since the states in this empty sub-block do not
+     * transition to any of the blocks that have been split in the previous
+     * refinement step.
+     *
+     * @throws UnsupportedOperationException always
+     */
+    @Override
+    public void add(Object action, Integer block) {
+        throw new UnsupportedOperationException();
+    }
 }

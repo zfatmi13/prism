@@ -74,21 +74,27 @@ public final class NonEmptySubBlock<Value> extends SubBlock<Value> {
     }
 
     /**
+     * Throws an exception since the states in this sub-block are probabilistic.
+     *
+     * @throws UnsupportedOperationException always
+     */
+    @Override
+    public void add(Object action, Integer block) {
+        throw new UnsupportedOperationException();
+    }
+
+    /**
      * Tests whether the given object is equal to this non-empty sub-block. Two
      * non-empty sub-blocks are considered equal if their liftings maps blocks to
      * probabilities that are very close.
      *
      * @param object an object
-     * @return true if the given object is equal to this empty sub-block, false
-     * otherwise
-     * @throws NullPointerException if object is null
-     * @throws ClassCastException   if object is not a sub-block
+     * @return true if the given object is equal to this non-empty sub-block,
+     * false otherwise
      */
     @Override
     public boolean equals(Object object) {
-        if (object instanceof EmptySubBlock) {
-            return false;
-        } else {
+        if (object instanceof NonEmptySubBlock) {
             @SuppressWarnings("unchecked")
             NonEmptySubBlock<Value> other = (NonEmptySubBlock<Value>) object;
             if (this.lifting.size() != other.lifting.size()) {
@@ -102,6 +108,8 @@ public final class NonEmptySubBlock<Value> extends SubBlock<Value> {
                 }
             }
             return true;
+        } else {
+            return false;
         }
     }
 }

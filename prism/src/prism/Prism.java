@@ -197,6 +197,8 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 	protected boolean doBisim = false;
 	// Method to use for bisimulation minimisation
 	protected String bisimMethod = null;
+	// Calculate bisimilarity distances?
+	protected boolean calcDistances = false;
 
 	// A few miscellaneous options (i.e. defunct/hidden/undocumented/etc.)
 	// See constructor below for default values
@@ -700,6 +702,14 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 		this.doBisim = doBisim;
 	}
 
+	/**
+	 * Specify whether or not to calculate bisimilarity distances.
+	 */
+	public void setCalcDistances(boolean calcDistances)
+	{
+		this.calcDistances = calcDistances;
+	}
+
 	public void setDoReach(boolean b) throws PrismException
 	{
 		doReach = b;
@@ -1024,6 +1034,11 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 	public boolean getDoBisim()
 	{
 		return doBisim;
+	}
+
+	public boolean getCalcDistances()
+	{
+		return calcDistances;
 	}
 
 	public boolean getDoReach()
@@ -4423,6 +4438,7 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 		mc.setRestrictStratToReach(restrictStratToReach);
 		mc.setDoBisim(doBisim);
 		mc.setBisimMethod(bisimMethod);
+		mc.setCalcDistances(calcDistances);
 
 		return mc;
 	}

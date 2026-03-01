@@ -42,14 +42,14 @@ import prism.PrismException;
 /**
  * Method to perform bisimulation minimisation for explicit-state models.
  */
-public class BisimulationMethodOld<Value> extends Bisimulation<Value> {
+public class OldBisimulationMethod<Value> extends Bisimulation<Value> {
     // Local storage of partition info
     protected MDPSimple<Value> mdp;
 
     /**
-     * Construct a new BisimulationMethodOld object.
+     * Construct a new OldBisimulationMethod object.
      */
-    public BisimulationMethodOld(PrismComponent parent) throws PrismException {
+    public OldBisimulationMethod(PrismComponent parent) throws PrismException {
         super(parent);
     }
 
@@ -69,7 +69,7 @@ public class BisimulationMethodOld<Value> extends Bisimulation<Value> {
     }
 
     @Override
-    protected DTMCSimple<Value> buildReducedDTMC() {
+    protected DTMCSimple<Value> buildReducedDTMC(DTMC<Value> dtmc) {
         // Build reduced model
         DTMCSimple<Value> dtmcNew = new DTMCSimple<>(numBlocks);
         for (int i = 0; i < numBlocks; i++) {
@@ -81,7 +81,7 @@ public class BisimulationMethodOld<Value> extends Bisimulation<Value> {
     }
 
     @Override
-    protected CTMCSimple<Value> buildReducedCTMC() {
+    protected CTMCSimple<Value> buildReducedCTMC(CTMC<Value> ctmc) {
         // Build reduced model
         CTMCSimple<Value> ctmcNew = new CTMCSimple<>(numBlocks);
         for (int i = 0; i < numBlocks; i++) {

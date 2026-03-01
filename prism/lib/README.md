@@ -21,6 +21,7 @@ This folder contains the following libraries:
 +--- org.apache.logging.log4j:log4j-core:2.17.1
 |    \--- org.apache.logging.log4j:log4j-api:2.17.1
 \--- org.junit.platform:junit-platform-console-standalone:1.7.2
++--- org.apache.commons:commons-math3:3.6.1
 ```
 
 See here for more details and links:

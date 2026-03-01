@@ -2,7 +2,7 @@
 //
 //	Copyright (c) 2024-
 //	Authors:
-//	* Zainab Fatmi
+//	* Zainab Fatmi (University of Oxford)
 //
 //------------------------------------------------------------------------------
 //
@@ -38,14 +38,14 @@ import java.util.Set;
 
 import explicit.CTMC;
 import explicit.DTMC;
+import explicit.MDP;
 import prism.Evaluator;
 import prism.PrismComponent;
-import prism.PrismException;
 
 /**
  * Performs robust bisimulation minimisation for explicit-state models.
  */
-public class RobustBisimulation<Value> extends BisimulationMethodNew<Value> {
+public class RobustBisimulation<Value> extends DefaultBisimulation<Value> {
 	/* Local storage of partition info */
 	Map<Integer, List<Integer>> successors;
 	List<List<Integer>> R;
@@ -54,7 +54,7 @@ public class RobustBisimulation<Value> extends BisimulationMethodNew<Value> {
 	/**
 	 * Construct a new RobustBisimulation object.
 	 */
-	public RobustBisimulation(PrismComponent parent) throws PrismException {
+	public RobustBisimulation(PrismComponent parent) {
 		super(parent);
 	}
 
@@ -70,11 +70,7 @@ public class RobustBisimulation<Value> extends BisimulationMethodNew<Value> {
 			prune();
 			bisimilarity(dtmc, eval, 1);
 		}
-		if (numStates == numBlocks) {
-			return false;
-		}
-		lifting(dtmc, eval);
-		return true;
+		return numStates != numBlocks;
 	}
 
 	/**
@@ -103,7 +99,7 @@ public class RobustBisimulation<Value> extends BisimulationMethodNew<Value> {
 	 */
 	protected boolean filter() {
 		/* construct R from the partition */
-		R = new ArrayList<List<Integer>>();
+		R = new ArrayList<List<Integer>>(numBlocks);
 		for (int block = 0; block < numBlocks; block++) {
 			R.add(new ArrayList<Integer>());
 		}
@@ -182,7 +178,13 @@ public class RobustBisimulation<Value> extends BisimulationMethodNew<Value> {
 
 	@Override
 	protected boolean minimiseCTMC(CTMC<Value> ctmc) {
-		mainLog.println("Robust bisimilarity not yet supported for CTMCs: skipping minimisation");
+		mainLog.println("Robust bisimilarity not yet supported for CTMCs: skipping minimisation.");
+		return false;
+	}
+
+	@Override
+	protected boolean minimiseMDP(MDP<Value> mdp) {
+		mainLog.println("Robust bisimilarity not yet supported for MDPs: skipping minimisation.");
 		return false;
 	}
 }

@@ -28,17 +28,25 @@ package explicit.bisim;
 
 import java.util.ArrayList;
 import java.util.BitSet;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import explicit.CTMC;
 import explicit.CTMCSimple;
+import explicit.Distribution;
 import explicit.DTMC;
 import explicit.DTMCSimple;
+import explicit.MDP;
+import explicit.MDPSimple;
 import explicit.Model;
 import explicit.ModelExplicit;
 import parser.State;
+import prism.Evaluator;
 import prism.PrismComponent;
-import prism.PrismException;
 import prism.PrismNotSupportedException;
 
 /**
@@ -51,10 +59,14 @@ public abstract class Bisimulation<Value> extends PrismComponent {
 	protected int numBlocks;
 	protected boolean minimised;
 
+	/** The signatures of each block in the final partition. */
+	private Map<Integer, Distribution<Value>> probabilities;
+	private Map<Integer, Map<Object, Set<Distribution<Value>>>> mdpProbabilities;
+
 	/**
 	 * Constructs a new Bisimulation object. Such a constructor must be defined in extending classes.
 	 */
-	public Bisimulation(PrismComponent parent) throws PrismException {
+	public Bisimulation(PrismComponent parent) {
 		super(parent);
 	}
 
@@ -65,14 +77,17 @@ public abstract class Bisimulation<Value> extends PrismComponent {
 	 * @param propNames Names of the propositions in {@code propBSs}
 	 * @param propBSs   Propositions (satisfying sets of states) to be preserved by bisimulation.
 	 */
-	public Model<Value> minimise(Model<Value> model, List<String> propNames, List<BitSet> propBSs) throws PrismException {
+	public Model<Value> minimise(Model<Value> model, List<String> propNames, List<BitSet> propBSs) throws PrismNotSupportedException {
 		switch (model.getModelType()) {
 			case DTMC:
 				return minimiseDTMC((DTMC<Value>) model, propNames, propBSs);
 			case CTMC:
 				return minimiseCTMC((CTMC<Value>) model, propNames, propBSs);
+			case MDP:
+				return minimiseMDP((MDP<Value>) model, propNames, propBSs);
 			default:
-				throw new PrismNotSupportedException("Bisimulation minimisation not yet supported for " + model.getModelType() + "s");
+				throw new PrismNotSupportedException("Bisimulation minimisation not yet supported for " +
+					model.getModelType() + "s");
 		}
 	}
 
@@ -89,7 +104,7 @@ public abstract class Bisimulation<Value> extends PrismComponent {
 		initialisePartitionInfo(dtmc, propBSs); /* Create initial partition based on propositions */
 		minimised = minimiseDTMC(dtmc);
 		if (minimised) {
-			DTMCSimple<Value> dtmcNew = buildReducedDTMC();
+			DTMCSimple<Value> dtmcNew = buildReducedDTMC(dtmc);
 			attachStatesAndLabels(dtmc, dtmcNew, propNames, propBSs);
 			timer = System.currentTimeMillis() - timer;
 			mainLog.println("Minimisation: " + numStates + " to " + numBlocks + " States");
@@ -115,7 +130,7 @@ public abstract class Bisimulation<Value> extends PrismComponent {
 		initialisePartitionInfo(ctmc, propBSs); /* Create initial partition based on propositions */
 		minimised = minimiseCTMC(ctmc);
 		if (minimised) {
-			CTMCSimple<Value> ctmcNew = buildReducedCTMC();
+			CTMCSimple<Value> ctmcNew = buildReducedCTMC(ctmc);
 			attachStatesAndLabels(ctmc, ctmcNew, propNames, propBSs);
 			timer = System.currentTimeMillis() - timer;
 			mainLog.println("Minimisation: " + numStates + " to " + numBlocks + " States");
@@ -129,6 +144,32 @@ public abstract class Bisimulation<Value> extends PrismComponent {
 	}
 
 	/**
+	 * Perform bisimulation minimisation on a DTMC.
+	 *
+	 * @param mdp       The MDP
+	 * @param propNames Names of the propositions in {@code propBSs}
+	 * @param propBSs   Propositions (satisfying sets of states) to be preserved by bisimulation.
+	 */
+	protected MDP<Value> minimiseMDP(MDP<Value> mdp, List<String> propNames, List<BitSet> propBSs) {
+		long timer;
+		timer = System.currentTimeMillis();
+		initialisePartitionInfo(mdp, propBSs); /* Create initial partition based on propositions */
+		minimised = minimiseMDP(mdp);
+		if (minimised) {
+			MDPSimple<Value> mdpNew = buildReducedMDP(mdp);
+			attachStatesAndLabels(mdp, mdpNew, propNames, propBSs);
+			timer = System.currentTimeMillis() - timer;
+			mainLog.println("Minimisation: " + numStates + " to " + numBlocks + " States");
+			mainLog.println("Time for bisimulation computation: " + timer / 1000.0 + " seconds.");
+			return mdpNew;
+		} /* If the state space was not minimised, do not create a reduced model */
+		timer = System.currentTimeMillis() - timer;
+		mainLog.println("State space was not minimised.");
+		mainLog.println("Time for bisimulation computation: " + timer / 1000.0 + " seconds.");
+		return mdp;
+	}
+
+	/**
 	 * Partitions the states of the specified labelled Markov chain, given the
 	 * initial partition, updating {@code numBlocks} and {@code partition}.
 	 * States are in the same set, that is, are mapped to the same integer, if
@@ -137,7 +178,10 @@ public abstract class Bisimulation<Value> extends PrismComponent {
 	 * @param dtmc The DTMC.
 	 * @return True if the state space is minimised, false otherwise.
 	 */
-	protected abstract boolean minimiseDTMC(DTMC<Value> dtmc);
+	protected boolean minimiseDTMC(DTMC<Value> dtmc) {
+		mainLog.println("This bisimulation method is not yet supported for DTMCs: skipping minimisation.");
+		return false;
+	}
 
 	/**
 	 * Partitions the states of the specified labelled Markov chain, given the
@@ -148,21 +192,74 @@ public abstract class Bisimulation<Value> extends PrismComponent {
 	 * @param ctmc The CTMC.
 	 * @return True if the state space is minimised, false otherwise.
 	 */
-	protected abstract boolean minimiseCTMC(CTMC<Value> ctmc);
+	protected boolean minimiseCTMC(CTMC<Value> ctmc) {
+		mainLog.println("This bisimulation method is not yet supported for CTMCs: skipping minimisation.");
+		return false;
+	}
+
+	/**
+	 * Partitions the states of the Markov decision process, given the
+	 * initial partition, updating {@code numBlocks} and {@code partition}.
+	 * States are in the same set, that is, are mapped to the same integer, if
+	 * and only if they are probabilistic bisimilar.
+	 *
+	 * @param mdp The MDP.
+	 * @return True if the state space is minimised, false otherwise.
+	 */
+	protected boolean minimiseMDP(MDP<Value> mdp) {
+		mainLog.println("This bisimulation method is not yet supported for MDPs: skipping minimisation.");
+		return false;
+	}
 
 	/**
 	 * Build the reduced model.
 	 *
 	 * @return The reduced DTMC.
 	 */
-	protected abstract DTMCSimple<Value> buildReducedDTMC();
+	protected DTMCSimple<Value> buildReducedDTMC(DTMC<Value> dtmc) {
+		lifting(dtmc, dtmc.getEvaluator());
+		DTMCSimple<Value> dtmcNew = new DTMCSimple<>(numBlocks);
+		for (int i = 0; i < numBlocks; i++) {
+			for (Map.Entry<Integer, Value> e : probabilities.get(i)) {
+				dtmcNew.setProbability(i, e.getKey(), e.getValue());
+			}
+		}
+		return dtmcNew;
+	}
 
 	/**
 	 * Build the reduced model.
 	 *
 	 * @return The reduced CTMC.
 	 */
-	protected abstract CTMCSimple<Value> buildReducedCTMC();
+	protected CTMCSimple<Value> buildReducedCTMC(CTMC<Value> ctmc) {
+		lifting(ctmc, ctmc.getEvaluator());
+		CTMCSimple<Value> ctmcNew = new CTMCSimple<>(numBlocks);
+		for (int i = 0; i < numBlocks; i++) {
+			for (Map.Entry<Integer, Value> e : probabilities.get(i)) {
+				ctmcNew.setProbability(i, e.getKey(), e.getValue());
+			}
+		}
+		return ctmcNew;
+	}
+
+	/**
+	 * Build the reduced model.
+	 *
+	 * @return The reduced MDP.
+	 */
+	protected MDPSimple<Value> buildReducedMDP(MDP<Value> mdp) {
+		mdpLifting(mdp, mdp.getEvaluator());
+		MDPSimple<Value> mdpNew = new MDPSimple<>(numBlocks);
+		for (int i = 0; i < numBlocks; i++) {
+			for (Map.Entry<Object, Set<Distribution<Value>>> entry : mdpProbabilities.get(i).entrySet()) {
+				for (Distribution<Value> distribution : entry.getValue()) {
+					mdpNew.addActionLabelledChoice(i, distribution, entry.getKey());
+				}
+			}
+		}
+		return mdpNew;
+	}
 
 	/**
 	 * Construct the initial partition based on a set of proposition bitsets.
@@ -208,6 +305,72 @@ public abstract class Bisimulation<Value> extends PrismComponent {
 	}
 
 	/**
+	 * Did bisimulation minimisation reduce the state space of the model?
+	 */
+	public boolean minimised() {
+		return minimised;
+	}
+
+	/**
+	 * Computes the signatures (lifting of the probability distribution) of each
+	 * block in the current partition and stores it in {@code probabilities}.
+	 *
+	 * @param dtmc The DTMC.
+	 * @param eval the evaluator to manipulate values.
+	 */
+	protected void lifting(DTMC<Value> dtmc, Evaluator<Value> eval) {
+		/* probabilities.get(s) is the signature of states in block s */
+		probabilities = new HashMap<Integer, Distribution<Value>>(numBlocks);
+		for (int source = 0; source < numStates; source++) {
+			int blockOfSource = partition[source];
+			if (!probabilities.containsKey(blockOfSource)) {
+				Distribution<Value> distNew = new Distribution<Value>(eval);
+				Iterator<Map.Entry<Integer, Value>> iter = dtmc.getTransitionsIterator(source);
+				while (iter.hasNext()) {
+					Map.Entry<Integer, Value> transition = iter.next();
+					distNew.add(partition[transition.getKey()], transition.getValue());
+				}
+				probabilities.put(blockOfSource, distNew);
+			}
+		}
+	}
+
+	/**
+	 * Computes the signatures (lifting of the probability distribution) of each
+	 * block in the current partition and stores it in {@code probabilities}.
+	 *
+	 * @param mdp  The MDP.
+	 * @param eval the evaluator to manipulate values.
+	 */
+	protected void mdpLifting(MDP<Value> mdp, Evaluator<Value> eval) {
+		/* mdpProbabilities.get(s) is the actions and associated signatures of states in block s */
+		mdpProbabilities = new HashMap<Integer, Map<Object, Set<Distribution<Value>>>>(numBlocks);
+		for (int source = 0; source < numStates; source++) {
+			int blockOfSource = partition[source];
+			if (!mdpProbabilities.containsKey(blockOfSource)) {
+				int numActions = mdp.getNumChoices(source);
+				Map<Object, Set<Distribution<Value>>> actionDistributions = new HashMap<Object, Set<Distribution<Value>>>(numActions);
+				// System.out.println(blockOfSource + " " + numActions);
+				for (int actionId = 0; actionId < numActions; actionId++) {
+					Object action = mdp.getAction(source, actionId);
+					// System.out.println(action);
+					Distribution<Value> distNew = new Distribution<Value>(eval);
+					Iterator<Map.Entry<Integer, Value>> iter = mdp.getTransitionsIterator(source, actionId);
+					while (iter.hasNext()) {
+						Map.Entry<Integer, Value> transition = iter.next();
+						distNew.add(partition[transition.getKey()], transition.getValue());
+					}
+					if (!actionDistributions.containsKey(action)) {
+						actionDistributions.put(action, new HashSet<Distribution<Value>>());
+					}
+					actionDistributions.get(action).add(distNew);
+				}
+				mdpProbabilities.put(blockOfSource, actionDistributions);
+			}
+		}
+	}
+
+	/**
 	 * Attach a list of states to the minimised model by adding a representative state
 	 * from the original model.
 	 * Also attach information about the propositions (used for bisimulation
@@ -228,8 +391,8 @@ public abstract class Bisimulation<Value> extends PrismComponent {
 			}
 			for (int i = 0; i < numStates; i++) {
 				if (statesListNew.get(partition[i]) == null) {
-                    statesListNew.set(partition[i], statesList.get(i));
-                }
+					statesListNew.set(partition[i], statesList.get(i));
+				}
 			}
 			modelNew.setStatesList(statesListNew);
 		}
@@ -245,12 +408,5 @@ public abstract class Bisimulation<Value> extends PrismComponent {
 			}
 			modelNew.addLabel(propName, propBSnew);
 		}
-	}
-
-	/**
-	 * Did bisimulation minimisation reduce the state space of the model?
-	 */
-	public boolean minimised() {
-		return minimised;
 	}
 }

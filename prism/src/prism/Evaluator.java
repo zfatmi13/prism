@@ -902,6 +902,7 @@ public interface Evaluator<Value>
 		private static final Evaluator<Interval<BigRational>> EVALUATOR_BIG_RATIONAL_INTERVAL = new EvaluatorBigRationalInterval();
 		private static final Interval<BigRational> ZERO = new Interval<BigRational>(BigRational.ZERO, BigRational.ZERO);
 		private static final Interval<BigRational> ONE = new Interval<BigRational>(BigRational.ONE, BigRational.ONE);
+		private static final Interval<BigRational> INFINITY = new Interval<BigRational>(BigRational.INF, BigRational.INF);
 
 		@Override
 		public Interval<BigRational> zero()
@@ -913,6 +914,12 @@ public interface Evaluator<Value>
 		public Interval<BigRational> one()
 		{
 			return ONE;
+		}
+
+		@Override
+		public Interval<BigRational> infinity()
+		{
+			return INFINITY;
 		}
 
 		@Override

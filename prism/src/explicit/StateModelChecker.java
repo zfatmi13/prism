@@ -39,6 +39,7 @@ import java.util.Vector;
 
 import common.Interval;
 import explicit.bisim.BisimulationTools;
+import explicit.bisim.distances.SimplePolicyIteration;
 import explicit.rewards.ConstructRewards;
 import explicit.rewards.Rewards;
 import io.DotExporter;
@@ -137,6 +138,8 @@ public class StateModelChecker extends PrismComponent
 	protected boolean doBisim = false;
 	// Which bisimulation minimisation method to use?
 	protected String bisimMethod = null;
+	// Calculate bisimilarity distances?
+	protected boolean calcDistances = false;
 
 	// Do topological value iteration?
 	protected boolean doTopologicalValueIteration = false;
@@ -264,6 +267,7 @@ public class StateModelChecker extends PrismComponent
 		setRestrictStratToReach(other.getRestrictStratToReach());
 		setDoBisim(other.getDoBisim());
 		setBisimMethod(other.getBisimMethod());
+		setCalcDistances(other.getCalcDistances());
 		setDoIntervalIteration(other.getDoIntervalIteration());
 		setDoPmaxQuotient(other.getDoPmaxQuotient());
 	}
@@ -364,6 +368,14 @@ public class StateModelChecker extends PrismComponent
 	public void setBisimMethod(String bisimMethod)
 	{
 		this.bisimMethod = bisimMethod;
+	}
+
+	/**
+	 * Specify whether or not to calculate bisimilarity distances.
+	 */
+	public void setCalcDistances(boolean calcDistances)
+	{
+		this.calcDistances = calcDistances;
 	}
 
 	/**
@@ -475,6 +487,14 @@ public class StateModelChecker extends PrismComponent
 	public String getBisimMethod()
 	{
 		return bisimMethod;
+	}
+
+	/**
+	 * Whether or not to calculate bisimilarity distances.
+	 */
+	public boolean getCalcDistances()
+	{
+		return calcDistances;
 	}
 
 	/**
@@ -599,6 +619,16 @@ public class StateModelChecker extends PrismComponent
 		// (in order to extract the final result of model checking) 
 		expr = ExpressionFilter.addDefaultFilterIfNeeded(expr, model.getNumInitialStates() == 1);
 
+		// If required, calculate bisimilarity distances
+		if (calcDistances && model.getModelType() == ModelType.DTMC) {
+			mainLog.println("\nCalculating bisimilarity distances...");
+			ArrayList<String> propNames = new ArrayList<String>();
+			ArrayList<BitSet> propBSs = new ArrayList<BitSet>();
+			Expression exprNew = checkMaximalPropositionalFormulas(model, expr.deepCopy(), propNames, propBSs);
+			SimplePolicyIteration<Value> spi = new SimplePolicyIteration<Value>(this, (DTMC<Value>) model, propBSs);
+			spi.compute();
+			spi.printDistances();
+		}
 		// If required, do bisimulation minimisation
 		if (doBisim) {
 			mainLog.println("\nPerforming bisimulation minimisation...");

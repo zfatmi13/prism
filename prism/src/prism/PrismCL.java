@@ -1878,6 +1878,9 @@ public class PrismCL implements PrismModelListener
 						errorAndExit("No name/class specified for -" + sw + " switch");
 					}
 				}
+				else if (sw.equals("distance")) {
+					prism.setCalcDistances(true);
+				}
 
 				// Other switches - pass to PrismSettings
 

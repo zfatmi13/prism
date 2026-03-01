@@ -38,7 +38,7 @@ import java.util.List;
  * Handles bisimulation minimisation for explicit-state models. Instantiates the
  * bisimulation minimisation method specified by the {@code bisimmethod} option.
  * If the class has a registered alias, that can be used. Otherwise, reflection
- * is used to instantiate the class. The default is BisimulationMethodNew.
+ * is used to instantiate the class. The default is DefaultBisimulation.
  */
 public class BisimulationTools<Value> {
 
@@ -63,18 +63,18 @@ public class BisimulationTools<Value> {
 	public Model<Value> minimise(PrismComponent parent, String bisimMethod, Model<Value> model, List<String> propNames, List<BitSet> propBSs) throws PrismException {
 		if (bisimMethod == null) {
 			/* use default */
-			bisim = new BisimulationMethodNew<Value>(parent);
+			bisim = new DefaultBisimulation<Value>(parent);
 		} else {
 			/* use alias */
 			switch (bisimMethod) {
-				case (OLD):
-					bisim = new BisimulationMethodOld<Value>(parent);
-					break;
 				case (DEFAULT):
-					bisim = new BisimulationMethodNew<Value>(parent);
+					bisim = new DefaultBisimulation<Value>(parent);
 					break;
 				case (ROBUST):
 					bisim = new RobustBisimulation<Value>(parent);
+					break;
+				case (OLD):
+					bisim = new OldBisimulationMethod<Value>(parent);
 					break;
 				default:
 					/* use reflection */

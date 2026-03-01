@@ -89,6 +89,9 @@ def sortedListDir(dir):
 def isPrismModelFile(file):
     return re.match(r'.+(\.prism|\.nm|\.pm|\.sm)$', file)
 
+def isPrismExplicitModelFile(file):
+    return re.match(r'.+(\.tra)$', file)
+
 def isPrismPropertiesFile(file):
     return re.match(r'.+(\.props|\.pctl|\.csl)$', file)
 
@@ -151,6 +154,20 @@ def getModelsInDir(dir):
     # Finally, append the dir name to all the model files
     modelFiles = map(lambda pair: (os.path.join(dir, pair[0]),pair[1]), modelFiles)
     
+    return modelFiles
+
+# Get a list of explicit models in a directory by searching for all files in
+# the directory with an appropriate extension.
+def getExplicitModelsInDir(dir):
+    modelFiles = []
+    for file in sortedListDir(dir):
+        if os.path.isfile(os.path.join(dir, file)) and isPrismExplicitModelFile(file):
+            modelFiles.append((file, []))
+    # If requested, filter the list of models
+    if options.filterModels:
+        modelFiles = filterModels(modelFiles, options.filterModels, dir)
+    # Finally, append the dir name to all the model files
+    modelFiles = map(lambda pair: (os.path.join(dir, pair[0]),pair[1]), modelFiles)
     return modelFiles
 
 # Restrict a list of models to those satisfying a filter expressed as a string
@@ -947,6 +964,9 @@ def benchmarkDir(dir):
     modelFiles = getModelsInDir(dir)
     for modelFile in modelFiles:
         benchmarkModelFile(modelFile[0], modelFile[1], dir)
+    modelFiles = getExplicitModelsInDir(dir)
+    for modelFile in modelFiles:
+        benchmarkExplicitModelFile(modelFile[0], modelFile[1], dir)
     # Get "orphan" auto files
     autoFiles = filter(functools.partial(isOrphan, dir), getAutoFilesInDir(dir))
     for autoFile in autoFiles:
@@ -961,6 +981,8 @@ def benchmarkDir(dir):
 def benchmarkFile(file):
     if isPrismModelFile(file):
         benchmarkModelFile(file)
+    elif isPrismExplicitModelFile(file):
+        benchmarkExplicitModelFile(file)
     elif isPrismPropertiesFile(file):
         benchmarkPropertiesFile(file)
     elif isPrismPropListFile(file):
@@ -969,6 +991,50 @@ def benchmarkFile(file):
         benchmarkAutoFile(file)
 
 # Execute benchmarking based on a single model file, possibly with some additional
+# arguments to pass to PRISM, passed in the list modelArgs (probably from a "models" file).
+# If there is a matching .args file (e.g. model.nm.args), arguments in this file
+# are also appended when calling PRISM (and multiple lines result in multiple PRISM runs).
+#
+# * modelFile: name of the model file (as a string)
+# * modelArgs: (optionally) a list of arguments attached to the model, e.g. ["-const", "N=2"]
+# * dir: (optionally) the directory containing the model (if absent, it is deduced)
+
+def benchmarkExplicitModelFile(modelFile, modelArgs=[], dir=""):
+    logging.debug("Benchmarking model file " + modelFile + " " + str(modelArgs))
+    if dir == "":
+        dir = os.path.dirname(modelFile)
+        if dir == "": dir = "."
+    modelArgs = [modelFile + ",lab"] + ["-dtmc"] + modelArgs
+    fileImport = "-importmodel"
+    # Expand model file based on any .args file
+    argLists = getMatchingArgListsForFile(modelFile)
+    logging.debug("Arg lists: " + str(argLists))
+    for args in argLists:
+        # Build mode: just build
+        if options.build:
+            benchmark(fileImport, modelArgs + args, dir)
+        # Otherwise, find properties
+        else:
+            # Find and benchmark properties
+            if options.matching:
+                propertiesFiles = getMatchingPropertiesInDir(dir, modelFile)
+            else:
+                propertiesFiles = getPropertiesInDir(dir)
+            logging.debug("Properties files: " + str(propertiesFiles))
+            for propertiesFile in propertiesFiles:
+                logging.debug("Property file: " + propertiesFile)
+                for argsp in getMatchingArgListsForFile(propertiesFile):
+                    benchmark(fileImport, modelArgs + args + [propertiesFile] + argsp, dir)
+        # Find and benchmark auto files
+        autoFiles = getMatchingAutoFilesInDir(dir, modelFile)
+        logging.debug("Auto files: " + str(autoFiles))
+        for autoFile in autoFiles:
+            logging.debug("Auto file: " + str(autoFile))
+            for autoArgs in getArgsListsFromFile(autoFile):
+                for argsa in getMatchingArgListsForFile(autoFile):
+                   benchmark(fileImport, modelArgs + args + autoArgs + argsa, dir)
+
+# Execute benchmarking based on a single explicit model file, possibly with some additional
 # arguments to pass to PRISM, passed in the list modelArgs (probably from a "models" file).
 # If there is a matching .args file (e.g. model.nm.args), arguments in this file
 # are also appended when calling PRISM (and multiple lines result in multiple PRISM runs).

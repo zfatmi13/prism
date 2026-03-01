@@ -77,4 +77,12 @@ public abstract class SubBlock<Value> {
      * @param probability the probability of transitioning to states in the block
      */
     public abstract void put(Integer block, Value probability);
+
+    /**
+     * Adds the given block to the action label.
+     *
+     * @param action the action label on a transition to a state in the block
+     * @param block  the ID of a block
+     */
+    public abstract void add(Object action, Integer block);
 }
