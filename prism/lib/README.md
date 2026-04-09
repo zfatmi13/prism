@@ -21,7 +21,10 @@ This folder contains the following libraries:
 +--- org.apache.logging.log4j:log4j-core:2.17.1
 |    \--- org.apache.logging.log4j:log4j-api:2.17.1
 \--- org.junit.platform:junit-platform-console-standalone:1.7.2
-+--- org.apache.commons:commons-math3:3.6.1
++--- com.google.ortools:ortools-java:9.15.6755
+|    \--- com.google.protobuf:protobuf-java:4.34.1
+|    \--- net.java.dev.jna:jna-platform:5.18.1
+|         \--- net.java.dev.jna:jna:5.18.1
 ```
 
 See here for more details and links:

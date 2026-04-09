@@ -44,6 +44,7 @@ import explicit.MDP;
 import explicit.MDPSimple;
 import explicit.Model;
 import explicit.ModelExplicit;
+import explicit.rewards.Rewards;
 import parser.State;
 import prism.Evaluator;
 import prism.PrismComponent;
@@ -51,6 +52,9 @@ import prism.PrismNotSupportedException;
 
 /**
  * Class to perform bisimulation minimisation for explicit-state models.
+ * It is only necessary for subclasses to implement the method(s) minimiseModel(Model)
+ * where Model is the supported model type(s), for example {@link #minimiseDTMC(DTMC)};
+ * the other methods have default implementations.
  */
 public abstract class Bisimulation<Value> extends PrismComponent {
 	// Local storage of partition info
@@ -76,15 +80,17 @@ public abstract class Bisimulation<Value> extends PrismComponent {
 	 * @param model     The model
 	 * @param propNames Names of the propositions in {@code propBSs}
 	 * @param propBSs   Propositions (satisfying sets of states) to be preserved by bisimulation.
+	 * @param rewName   Name of the rewards in {@code rewards}
+	 * @param rewards   Reward structure
 	 */
-	public Model<Value> minimise(Model<Value> model, List<String> propNames, List<BitSet> propBSs) throws PrismNotSupportedException {
+	public Model<Value> minimise(Model<Value> model, List<String> propNames, List<BitSet> propBSs, String rewName, Rewards<Value> rewards) throws PrismNotSupportedException {
 		switch (model.getModelType()) {
 			case DTMC:
-				return minimiseDTMC((DTMC<Value>) model, propNames, propBSs);
+				return minimiseDTMC((DTMC<Value>) model, propNames, propBSs, rewName, rewards);
 			case CTMC:
-				return minimiseCTMC((CTMC<Value>) model, propNames, propBSs);
+				return minimiseCTMC((CTMC<Value>) model, propNames, propBSs, rewName, rewards);
 			case MDP:
-				return minimiseMDP((MDP<Value>) model, propNames, propBSs);
+				return minimiseMDP((MDP<Value>) model, propNames, propBSs, rewName, rewards);
 			default:
 				throw new PrismNotSupportedException("Bisimulation minimisation not yet supported for " +
 					model.getModelType() + "s");
@@ -98,10 +104,9 @@ public abstract class Bisimulation<Value> extends PrismComponent {
 	 * @param propNames Names of the propositions in {@code propBSs}
 	 * @param propBSs   Propositions (satisfying sets of states) to be preserved by bisimulation.
 	 */
-	protected DTMC<Value> minimiseDTMC(DTMC<Value> dtmc, List<String> propNames, List<BitSet> propBSs) {
-		long timer;
-		timer = System.currentTimeMillis();
-		initialisePartitionInfo(dtmc, propBSs); /* Create initial partition based on propositions */
+	protected DTMC<Value> minimiseDTMC(DTMC<Value> dtmc, List<String> propNames, List<BitSet> propBSs, String rewName, Rewards<Value> rewards) {
+		long timer = System.currentTimeMillis();
+		initialisePartitionInfo(dtmc, propBSs, rewards); /* Create initial partition based on propositions */
 		minimised = minimiseDTMC(dtmc);
 		if (minimised) {
 			DTMCSimple<Value> dtmcNew = buildReducedDTMC(dtmc);
@@ -124,10 +129,9 @@ public abstract class Bisimulation<Value> extends PrismComponent {
 	 * @param propNames Names of the propositions in {@code propBSs}
 	 * @param propBSs   Propositions (satisfying sets of states) to be preserved by bisimulation.
 	 */
-	protected CTMC<Value> minimiseCTMC(CTMC<Value> ctmc, List<String> propNames, List<BitSet> propBSs) {
-		long timer;
-		timer = System.currentTimeMillis();
-		initialisePartitionInfo(ctmc, propBSs); /* Create initial partition based on propositions */
+	protected CTMC<Value> minimiseCTMC(CTMC<Value> ctmc, List<String> propNames, List<BitSet> propBSs, String rewName, Rewards<Value> rewards) {
+		long timer = System.currentTimeMillis();
+		initialisePartitionInfo(ctmc, propBSs, rewards); /* Create initial partition based on propositions */
 		minimised = minimiseCTMC(ctmc);
 		if (minimised) {
 			CTMCSimple<Value> ctmcNew = buildReducedCTMC(ctmc);
@@ -150,10 +154,9 @@ public abstract class Bisimulation<Value> extends PrismComponent {
 	 * @param propNames Names of the propositions in {@code propBSs}
 	 * @param propBSs   Propositions (satisfying sets of states) to be preserved by bisimulation.
 	 */
-	protected MDP<Value> minimiseMDP(MDP<Value> mdp, List<String> propNames, List<BitSet> propBSs) {
-		long timer;
-		timer = System.currentTimeMillis();
-		initialisePartitionInfo(mdp, propBSs); /* Create initial partition based on propositions */
+	protected MDP<Value> minimiseMDP(MDP<Value> mdp, List<String> propNames, List<BitSet> propBSs, String rewName, Rewards<Value> rewards) {
+		long timer = System.currentTimeMillis();
+		initialisePartitionInfo(mdp, propBSs, rewards); /* Create initial partition based on propositions */
 		minimised = minimiseMDP(mdp);
 		if (minimised) {
 			MDPSimple<Value> mdpNew = buildReducedMDP(mdp);
@@ -175,7 +178,7 @@ public abstract class Bisimulation<Value> extends PrismComponent {
 	 * States are in the same set, that is, are mapped to the same integer, if
 	 * and only if they are probabilistic bisimilar.
 	 *
-	 * @param dtmc The DTMC.
+	 * @param dtmc The DTMC
 	 * @return True if the state space is minimised, false otherwise.
 	 */
 	protected boolean minimiseDTMC(DTMC<Value> dtmc) {
@@ -189,7 +192,7 @@ public abstract class Bisimulation<Value> extends PrismComponent {
 	 * States are in the same set, that is, are mapped to the same integer, if
 	 * and only if they are probabilistic bisimilar.
 	 *
-	 * @param ctmc The CTMC.
+	 * @param ctmc The CTMC
 	 * @return True if the state space is minimised, false otherwise.
 	 */
 	protected boolean minimiseCTMC(CTMC<Value> ctmc) {
@@ -203,7 +206,7 @@ public abstract class Bisimulation<Value> extends PrismComponent {
 	 * States are in the same set, that is, are mapped to the same integer, if
 	 * and only if they are probabilistic bisimilar.
 	 *
-	 * @param mdp The MDP.
+	 * @param mdp The MDP
 	 * @return True if the state space is minimised, false otherwise.
 	 */
 	protected boolean minimiseMDP(MDP<Value> mdp) {
@@ -222,6 +225,7 @@ public abstract class Bisimulation<Value> extends PrismComponent {
 		for (int i = 0; i < numBlocks; i++) {
 			for (Map.Entry<Integer, Value> e : probabilities.get(i)) {
 				dtmcNew.setProbability(i, e.getKey(), e.getValue());
+				// mainLog.println(i + " -> " + e.getKey() + " : " + e.getValue());
 			}
 		}
 		return dtmcNew;
@@ -265,20 +269,31 @@ public abstract class Bisimulation<Value> extends PrismComponent {
 	 * Construct the initial partition based on a set of proposition bitsets.
 	 * Store info in {@code numStates}, {@code numBlocks} and {@code partition}.
 	 */
-	protected void initialisePartitionInfo(Model<Value> model, List<BitSet> propBSs) {
+	protected void initialisePartitionInfo(Model<Value> model, List<BitSet> propBSs, Rewards<Value> rewards) {
 		BitSet bs1, bs0;
 		numStates = model.getNumStates();
 		partition = new int[numStates];
 
+		// Initial partition: reward BitSets if available, otherwise use the first proposition
+		List<BitSet> all = new ArrayList<>();
+		int propStart = 0;
+		if (rewards != null && rewards.hasStateRewards()) {
+			Map<Value, BitSet> rewardBSs = new HashMap<>();
+			for (int s = 0; s < numStates; s++) {
+				rewardBSs.computeIfAbsent(rewards.getStateReward(s), r -> new BitSet()).set(s);
+			}
+			all.addAll(rewardBSs.values());
+		} else {
+			bs1 = (BitSet) propBSs.get(0).clone();
+			bs0 = (BitSet) bs1.clone();
+			bs0.flip(0, numStates);
+			all.add(bs1);
+			all.add(bs0);
+			propStart = 1;
+		}
+
 		// Compute all non-empty combinations of propositions
-		List<BitSet> all = new ArrayList<BitSet>();
-		bs1 = (BitSet) propBSs.get(0).clone();
-		bs0 = (BitSet) bs1.clone();
-		bs0.flip(0, numStates);
-		all.add(bs1);
-		all.add(bs0);
-		int n = propBSs.size();
-		for (int i = 1; i < n; i++) {
+		for (int i = propStart; i < propBSs.size(); i++) {
 			BitSet bs = propBSs.get(i);
 			int m = all.size();
 			for (int j = 0; j < m; j++) {
@@ -315,7 +330,7 @@ public abstract class Bisimulation<Value> extends PrismComponent {
 	 * Computes the signatures (lifting of the probability distribution) of each
 	 * block in the current partition and stores it in {@code probabilities}.
 	 *
-	 * @param dtmc The DTMC.
+	 * @param dtmc The DTMC
 	 * @param eval the evaluator to manipulate values.
 	 */
 	protected void lifting(DTMC<Value> dtmc, Evaluator<Value> eval) {
@@ -379,7 +394,7 @@ public abstract class Bisimulation<Value> extends PrismComponent {
 	 * @param model     The original model
 	 * @param modelNew  The minimised model
 	 * @param propNames The names of the propositions
-	 * @param propBSs   Satisfying states (of the minimised model) for the propositions
+	 * @param propBSs   Satisfying states (of the minimised model) for the propositions.
 	 */
 	protected void attachStatesAndLabels(Model<Value> model, ModelExplicit<Value> modelNew, List<String> propNames, List<BitSet> propBSs) {
 		// Attach states
@@ -404,6 +419,7 @@ public abstract class Bisimulation<Value> extends PrismComponent {
 			BitSet propBS = propBSs.get(i);
 			BitSet propBSnew = new BitSet();
 			for (int j = propBS.nextSetBit(0); j >= 0; j = propBS.nextSetBit(j + 1)) {
+				// mainLog.println(propName + ": " + partition[j]);
 				propBSnew.set(partition[j]);
 			}
 			modelNew.addLabel(propName, propBSnew);

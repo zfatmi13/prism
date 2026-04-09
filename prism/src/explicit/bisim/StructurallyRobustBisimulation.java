@@ -19,21 +19,6 @@ public class StructurallyRobustBisimulation<Value> extends RobustBisimulation<Va
 		super(parent);
 	}
 
-	@Override
-	protected boolean minimiseDTMC(DTMC<Value> dtmc) {
-		Evaluator<Value> eval = dtmc.getEvaluator();
-		bisimilarity(dtmc, eval, 1);
-		if (numStates == numBlocks) {
-			return false;
-		}
-		initialize(dtmc);
-		while (filter()) {
-			prune();
-			bisimilarity(dtmc, eval, 1);
-		}
-		return numStates != numBlocks;
-	}
-
 	protected void computeStablePairs() {
 		/* initialize S to the bisimilar pairs */
 		S = new ArrayList<Set<Integer>>(numStates);

@@ -60,17 +60,47 @@ public class RobustBisimulation<Value> extends DefaultBisimulation<Value> {
 
 	@Override
 	protected boolean minimiseDTMC(DTMC<Value> dtmc) {
-		Evaluator<Value> eval = dtmc.getEvaluator();
-		bisimilarity(dtmc, eval, 1);
+		return robustBisimilarity(dtmc, dtmc.getEvaluator(), 1);
+	}
+
+	@Override
+	protected boolean minimiseCTMC(CTMC<Value> ctmc) {
+		return robustBisimilarity(ctmc, ctmc.getEvaluator(), 0);
+		//mainLog.println("Robust bisimilarity not yet supported for CTMCs: skipping minimisation.");
+		//return false;
+	}
+
+	/**
+	 * Computes robust probabilistic bisimilarity for the specified labelled Markov chain.
+	 *
+	 * @param model The DTMC or CTMC.
+	 * @param eval  The evaluator to manipulate values.
+	 * @param dtmc  1 if the model is a DTMC and 0 if it is a CTMC.
+	 * @return true if the model was minimised, false otherwise.
+	 */
+	protected boolean robustBisimilarity(DTMC<Value> model, Evaluator<Value> eval, int dtmc) {
+		bisimilarity(model, eval, dtmc);
 		if (numStates == numBlocks) {
 			return false;
 		}
-		initialize(dtmc);
+		robust(model, eval, dtmc);
+		return numStates != numBlocks;
+	}
+
+	/**
+	 * Computes robust probabilistic bisimilarity for the specified labelled Markov chain,
+	 * given that probabilistic bisimilarity was already computed.
+	 *
+	 * @param model The DTMC or CTMC.
+	 * @param eval  The evaluator to manipulate values.
+	 * @param dtmc  1 if the model is a DTMC and 0 if it is a CTMC.
+	 */
+	protected void robust(DTMC<Value> model, Evaluator<Value> eval, int dtmc) {
+		getSuccessors(model);
 		while (filter()) {
 			prune();
-			bisimilarity(dtmc, eval, 1);
+			bisimilarity(model, eval, dtmc);
 		}
-		return numStates != numBlocks;
 	}
 
 	/**
@@ -78,7 +108,7 @@ public class RobustBisimulation<Value> extends DefaultBisimulation<Value> {
 	 *
 	 * @param dtmc The DTMC
 	 */
-	protected void initialize(DTMC<Value> dtmc) {
+	protected void getSuccessors(DTMC<Value> dtmc) {
 		successors = new HashMap<Integer, List<Integer>>(numStates);
 		List<Integer> transitions;
 		for (int source = 0; source < numStates; source++) {
@@ -174,12 +204,6 @@ public class RobustBisimulation<Value> extends DefaultBisimulation<Value> {
 				numBlocks++;
 			}
 		}
-	}
-
-	@Override
-	protected boolean minimiseCTMC(CTMC<Value> ctmc) {
-		mainLog.println("Robust bisimilarity not yet supported for CTMCs: skipping minimisation.");
-		return false;
 	}
 
 	@Override

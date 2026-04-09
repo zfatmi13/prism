@@ -39,7 +39,7 @@ import java.util.Vector;
 
 import common.Interval;
 import explicit.bisim.BisimulationTools;
-import explicit.bisim.distances.SimplePolicyIteration;
+import explicit.bisim.distances.*;
 import explicit.rewards.ConstructRewards;
 import explicit.rewards.Rewards;
 import io.DotExporter;
@@ -71,6 +71,7 @@ import parser.ast.ExpressionLabel;
 import parser.ast.ExpressionLiteral;
 import parser.ast.ExpressionObs;
 import parser.ast.ExpressionProp;
+import parser.ast.ExpressionReward;
 import parser.ast.ExpressionUnaryOp;
 import parser.ast.ExpressionVar;
 import parser.ast.LabelList;
@@ -625,18 +626,73 @@ public class StateModelChecker extends PrismComponent
 			ArrayList<String> propNames = new ArrayList<String>();
 			ArrayList<BitSet> propBSs = new ArrayList<BitSet>();
 			Expression exprNew = checkMaximalPropositionalFormulas(model, expr.deepCopy(), propNames, propBSs);
-			SimplePolicyIteration<Value> spi = new SimplePolicyIteration<Value>(this, (DTMC<Value>) model, propBSs);
-			spi.compute();
-			spi.printDistances();
+			// If there is an R operator, get its reward structure
+			ExpressionReward rewardExpr = null;
+			String rewName = null;
+			Rewards<Value> rewards = null;
+			if (exprNew instanceof ExpressionReward) {
+				rewardExpr = (ExpressionReward) exprNew;
+			} else if (exprNew instanceof ExpressionFilter) {
+				if (((ExpressionFilter) exprNew).getOperand() instanceof ExpressionReward) {
+					rewardExpr = (ExpressionReward) ((ExpressionFilter) exprNew).getOperand();
+				}
+			}
+			if (rewardExpr != null) {
+				int r = rewardExpr.getRewardStructIndexByIndexObject(rewardGen, constantValues);
+				rewName = rewardGen.getRewardStructName(r);
+				rewards = constructExpectedRewards(model, r);
+			}
+
+			Continuity<Value> continuity = new Continuity<Value>(this);
+			boolean[] discontinuity = continuity.decide((DTMC<Value>) model, propBSs, rewards);
+			double[] distances = continuity.getDistance();
+
+			Proximity<Value> proximity = new Proximity<Value>(this);
+			double[] similarity = proximity.compute((DTMC<Value>) model, propBSs, rewards);
+
+			int n = model.getNumStates();
+			for (int s = 0; s < n; s++) {
+				for (int t = 0; t < n; t++) {
+					if (Math.abs(1 - distances[s * n + t] - similarity[s * n + t]) > 1E-6) {
+						if (!discontinuity[s * n + t]) {
+							mainLog.println("Incorrect: " + distances[s * n + t] + " " +
+									similarity[s * n + t] + " " + !discontinuity[s * n + t]);
+						}
+					} else {
+						if (discontinuity[s * n + t]) {
+							mainLog.println("Incorrect: " + distances[s * n + t] + " " +
+									similarity[s * n + t] + " " + !discontinuity[s * n + t]);
+						}
+					}
+				}
+			}
 		}
 		// If required, do bisimulation minimisation
 		if (doBisim) {
 			mainLog.println("\nPerforming bisimulation minimisation...");
+			// Find and evaluate maximal propositional formulas in the property, to use as propositions for bisimulation minimisation
 			ArrayList<String> propNames = new ArrayList<String>();
 			ArrayList<BitSet> propBSs = new ArrayList<BitSet>();
 			Expression exprNew = checkMaximalPropositionalFormulas(model, expr.deepCopy(), propNames, propBSs);
+			// If there is an R operator, get its reward structure
+			ExpressionReward rewardExpr = null;
+			String rewName = null;
+			Rewards<Value> rewards = null;
+			if (exprNew instanceof ExpressionReward) {
+				rewardExpr = (ExpressionReward) exprNew;
+			} else if (exprNew instanceof ExpressionFilter) {
+				if (((ExpressionFilter) exprNew).getOperand() instanceof ExpressionReward) {
+					rewardExpr = (ExpressionReward) ((ExpressionFilter) exprNew).getOperand();
+				}
+			}
+			if (rewardExpr != null) {
+				int r = rewardExpr.getRewardStructIndexByIndexObject(rewardGen, constantValues);
+				rewName = rewardGen.getRewardStructName(r);
+				rewards = constructExpectedRewards(model, r);
+			}
+			// Do the bisimulation
 			BisimulationTools<Value> bisim = new BisimulationTools<Value>();
-			model = bisim.minimise(this, bisimMethod, model, propNames, propBSs);
+			model = bisim.minimise(this, bisimMethod, model, propNames, propBSs, rewName, rewards);
 			if (bisim.minimised()) {
 				mainLog.println("Modified property: " + exprNew);
 				expr = exprNew;
@@ -1493,6 +1549,7 @@ public class StateModelChecker extends PrismComponent
 		 */
 		private Object replaceWithLabel(Expression e) throws PrismLangException
 		{
+			// mainLog.println("SMC: " + e.toString());
 			// Model check
 			StateValues sv;
 			try {

@@ -3,6 +3,8 @@
 //	Copyright (c) 2025-
 //	Authors:
 //	* Qiyi Tang
+//	* Franck van Breugel
+//	* Zainab Fatmi
 //
 //------------------------------------------------------------------------------
 //
@@ -27,153 +29,61 @@
 package explicit.bisim.distances;
 
 import explicit.DTMC;
-import explicit.bisim.DefaultBisimulation;
+import explicit.rewards.Rewards;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
-import java.util.Collection;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
-
-import org.apache.commons.math3.optim.PointValuePair;
-import org.apache.commons.math3.optim.linear.LinearConstraint;
-import org.apache.commons.math3.optim.linear.LinearConstraintSet;
-import org.apache.commons.math3.optim.linear.LinearObjectiveFunction;
-import org.apache.commons.math3.optim.linear.NonNegativeConstraint;
-import org.apache.commons.math3.optim.linear.Relationship;
-import org.apache.commons.math3.optim.linear.SimplexSolver;
-import org.apache.commons.math3.optim.nonlinear.scalar.GoalType;
 
 import prism.PrismComponent;
 
 /**
  * Computes the probabilistic bisimilarity distances by
  * means of simple policy iteration.
- *
- * @author Qiyi Tang
  */
-public class SimplePolicyIteration<Value> extends DefaultBisimulation<Value> {
+public class SimplePolicyIteration<Value> extends Distances<Value> {
+
+	/** {@code distance[s * numStates + t]} is the distance between s and t. */
+	protected double[] distance;
 
 	/**
-	 * Desired accuracy.
+	 * {@code bisimilar[s * numStates + t]} is true iff states s and t are
+	 * bisimilar.
 	 */
-	public static final double ACCURACY = 1E-8;
+	protected boolean[] bisimilar;
 
-	/*
-	 * The transition function of the labelled Markov chain:
-	 * probabilities[s][t] = probability of transitioning from state s to state t.
-	 */
-	private final double[][] probabilities;
-
-	/*
-	 * The number of states of the labelled Markov chain.
-	 */
-	private final int numberOfStates;
-
-	/*
-	 * The distances of the labelled Markov chain:
-	 * distance[s * numberOfStates + t] = distance of s and t.
-	 */
-	private double[] distance;
-
-	/*
-	 * For states s, t, with s > t,
-	 * toCompute[s * numberOfStates + t] == whether the distance
-	 * of s and t still needs to be computed.
-	 */
-	private boolean[] toCompute;
-
-	/*
-	 * For states s, t, with s > t, if
-	 * toCompute[s * numberOfStates + t]
-	 * then policy[s * numberOfStates + t] is a coupling of
-	 * probabilities[s] and probabilities[t].
-	 */
-	private double[][] policy;
-
-	/*
-	 * For states s, t,
-	 * bisimilar[s * numberOfStates + t] == distance of s and t is zero.
-	 */
-	private boolean[] bisimilar;
-
-	/*
-	 * For states s, t,
-	 * differentLabels[s * numberOfStates + t] == s and t have different labels.
-	 */
-	private boolean[] differentLabels;
+	public SimplePolicyIteration(PrismComponent parent) {
+		super(parent);
+	}
 
 	/**
 	 * Initializes this computation of probabilistic bisimilarity
 	 * distances for the given labelled Markov chain.
 	 *
-	 * @param chain a labelled Markov chain
+	 * @param chain   a labelled Markov chain
+	 * @param propBSs the propositions used to determine labels
+	 * @param rewards the reward structure used to determine labels
 	 */
-	public SimplePolicyIteration(PrismComponent parent, DTMC<Value> chain, List<BitSet> propBSs) {
-		super(parent);
-		this.numberOfStates = chain.getNumStates();
-		this.distance = new double[numberOfStates * numberOfStates];
-		this.toCompute = new boolean[numberOfStates * numberOfStates];
-		this.policy = new double[numberOfStates * numberOfStates][numberOfStates * numberOfStates];
-		this.differentLabels = new boolean[numberOfStates * numberOfStates];
-		this.bisimilar = new boolean[numberOfStates * numberOfStates];
-
-		// the transition probabilities
-		this.probabilities = new double[numberOfStates][numberOfStates];
-		for (int s = 0; s < this.numberOfStates; s++) {
-			Iterator<Map.Entry<Integer, Value>> iter = chain.getTransitionsIterator(s);
-			while (iter.hasNext()) {
-				Map.Entry<Integer, Value> transition = iter.next();
-				this.probabilities[s][transition.getKey()] = chain.getEvaluator().toDouble(transition.getValue());
-			}
-		}
-
-		// use initial partition to determine if states have the same label
-		initialisePartitionInfo(chain, propBSs);
-		for (int s = 0; s < this.numberOfStates; s++) {
-			for (int t = 0; t < this.numberOfStates; t++) {
-				if (this.partition[s] != this.partition[t]) {
-					this.distance[s * this.numberOfStates + t] = 1;
-					this.differentLabels[s * this.numberOfStates + t] = true;
-				}
-			}
-		}
-
+	protected void initialize(DTMC<Value> chain, List<BitSet> propBSs, Rewards<Value> rewards) {
+		super.initialize(chain, propBSs, rewards);
+		this.distance = new double[this.numIndices];
+		this.bisimilar = new boolean[this.numIndices];
 		// compute bisimilarity
 		bisimilarity(chain, chain.getEvaluator(), 1);
-		for (int s = 0; s < this.numberOfStates; s++) {
-			for (int t = 0; t < this.numberOfStates; t++) {
+		for (int s = 0; s < this.numStates; s++) {
+			this.bisimilar[s * this.numStates + s] = true;
+			for (int t = s + 1; t < this.numStates; t++) {
 				if (this.partition[s] == this.partition[t]) {
-					this.bisimilar[s * this.numberOfStates + t] = true;
-				} else if (!this.differentLabels[s * this.numberOfStates + t]) {
-					this.toCompute[s * this.numberOfStates + t] = true;
-					this.setInitialCoupling(s, t);
+					this.bisimilar[s * this.numStates + t] = true;
+					this.bisimilar[t * this.numStates + s] = true;
+				} else if (this.differentLabels[s * this.numStates + t]) {
+					this.distance[s * this.numStates + t] = 1;
+					this.distance[t * this.numStates + s] = 1;
+				} else {
+					this.toCompute[s * this.numStates + t] = true;
+					this.toCompute[t * this.numStates + s] = true;
+					this.setCoupling(s, t);
 				}
-			}
-		}
-	}
-
-	/**
-	 * Sets a coupling for the probability distributions
-	 * of the given states.
-	 * The coupling is computed using the North-West corner method.
-	 *
-	 * @param s a state
-	 * @param t a state
-	 * @pre. s > t
-	 */
-	public void setInitialCoupling(int s, int t) {
-		double[] source = Arrays.copyOf(this.probabilities[s], this.numberOfStates);
-		double[] target = Arrays.copyOf(this.probabilities[t], this.numberOfStates);
-
-		for (int u = 0; u < this.numberOfStates; u++) {
-			for (int v = 0; v < this.numberOfStates; v++) {
-				double minimum = Math.min(source[u], target[v]);
-				this.policy[s * this.numberOfStates + t][u * this.numberOfStates + v] = minimum;
-				source[u] -= minimum;
-				target[v] -= minimum;
 			}
 		}
 	}
@@ -188,54 +98,23 @@ public class SimplePolicyIteration<Value> extends DefaultBisimulation<Value> {
 	}
 
 	/**
-	 * Returns whether states are probabilistic bisimilar.
-	 * For states s, t,
-	 * getBisimilar()[s * chain.getNumberOfStates() + t] == s and t are probabilistic bisimilar.
-	 *
-	 * @return Returns whether states are probabilistic bisimilar.
-	 */
-	public boolean[] getBisimilar() {
-		return this.bisimilar;
-	}
-
-	/**
-	 * Returns whether states have different labels.
-	 * For states s, t,
-	 * getDifferentLabels()[s * chain.getNumberOfStates() + t] == s and t have different labels.
-	 *
-	 * @return Returns whether states have different labels.
-	 */
-	public boolean[] getDifferentLabels() {
-		return this.differentLabels;
-	}
-
-	/**
-	 * Returns the computed policy.
-	 *
-	 * @return an optimal policy.
-	 */
-	public double[][] getPolicy() {
-		return this.policy;
-	}
-
-	/**
 	 * Sets the distances based on the current couplings.
 	 */
-	public void setDistance() {
-		double[] lower = new double[this.numberOfStates * this.numberOfStates];
-		double[] upper = new double[this.numberOfStates * this.numberOfStates];
+	private void setDistance() {
+		double[] lower = new double[this.numIndices];
+		double[] upper = new double[this.numIndices];
 
-		for (int u = 0; u < this.numberOfStates; u++) {
-			for (int v = 0; v < this.numberOfStates; v++) {
-				if (this.bisimilar[u * this.numberOfStates + v]) {
-					// lower[u * this.numberOfStates + v] = 0;
-					// upper[u * this.numberOfStates + v] = 0;
-				} else if (differentLabels[u * this.numberOfStates + v]) {
-					lower[u * this.numberOfStates + v] = 1;
-					upper[u * this.numberOfStates + v] = 1;
+		for (int u = 0; u < this.numStates; u++) {
+			for (int v = 0; v < this.numStates; v++) {
+				if (this.bisimilar[u * this.numStates + v]) {
+					// lower[u * this.numStates + v] = 0;
+					// upper[u * this.numStates + v] = 0;
+				} else if (differentLabels[u * this.numStates + v]) {
+					lower[u * this.numStates + v] = 1;
+					upper[u * this.numStates + v] = 1;
 				} else {
-					// lower[u * this.numberOfStates + v] = 0;
-					upper[u * this.numberOfStates + v] = 1;
+					// lower[u * this.numStates + v] = 0;
+					upper[u * this.numStates + v] = 1;
 				}
 			}
 		}
@@ -246,30 +125,30 @@ public class SimplePolicyIteration<Value> extends DefaultBisimulation<Value> {
 			done = true;
 			double[] previousLower = Arrays.copyOf(lower, lower.length);
 			double[] previousUpper = Arrays.copyOf(upper, upper.length);
-			for (int s = 0; s < this.numberOfStates; s++) {
-				for (int t = 0; t < this.numberOfStates; t++) {
-					if (farApart[s * this.numberOfStates + t]) {
-						lower[s * this.numberOfStates + t] = 0;
-						upper[s * this.numberOfStates + t] = 0;
-						for (int u = 0; u < this.numberOfStates; u++) {
-							for (int v = 0; v < this.numberOfStates; v++) {
-								if (this.bisimilar[u * this.numberOfStates + v]) {
+			for (int s = 0; s < this.numStates; s++) {
+				for (int t = 0; t < this.numStates; t++) {
+					if (farApart[s * this.numStates + t]) {
+						lower[s * this.numStates + t] = 0;
+						upper[s * this.numStates + t] = 0;
+						for (int u = 0; u < this.numStates; u++) {
+							for (int v = 0; v < this.numStates; v++) {
+								if (this.bisimilar[u * this.numStates + v]) {
 									// do nothing
 								} else {
-									double value = this.policy[s * this.numberOfStates + t][u * this.numberOfStates + v];
-									if (differentLabels[u * this.numberOfStates + v]) {
-										lower[s * this.numberOfStates + t] += value;
-										upper[s * this.numberOfStates + t] += value;
+									double value = this.policy[s * this.numStates + t][u * this.numStates + v];
+									if (differentLabels[u * this.numStates + v]) {
+										lower[s * this.numStates + t] += value;
+										upper[s * this.numStates + t] += value;
 									} else {
-										lower[s * this.numberOfStates + t] += previousLower[u * this.numberOfStates + v] * value;
-										upper[s * this.numberOfStates + t] += previousUpper[u * this.numberOfStates + v] * value;
+										lower[s * this.numStates + t] += previousLower[u * this.numStates + v] * value;
+										upper[s * this.numStates + t] += previousUpper[u * this.numStates + v] * value;
 									}
 								}
 							}
 						}
 
-						if (upper[s * this.numberOfStates + t] - lower[s * this.numberOfStates + t] < ACCURACY) {
-							farApart[s * this.numberOfStates + t] = false;
+						if (upper[s * this.numStates + t] - lower[s * this.numStates + t] < ACCURACY) {
+							farApart[s * this.numStates + t] = false;
 						} else {
 							done = false;
 						}
@@ -278,10 +157,11 @@ public class SimplePolicyIteration<Value> extends DefaultBisimulation<Value> {
 			}
 		} while (!done);
 
-		for (int s = 0; s < this.numberOfStates; s++) {
-			for (int t = 0; t < this.numberOfStates; t++) {
-				if (this.toCompute[s * this.numberOfStates + t]) {
-					this.distance[s * this.numberOfStates + t] = (lower[s * this.numberOfStates + t] + upper[s * this.numberOfStates + t]) / 2;
+		for (int s = 0; s < this.numStates; s++) {
+			for (int t = 0; t < this.numStates; t++) {
+				if (this.toCompute[s * this.numStates + t]) {
+					this.distance[s * this.numStates + t] =
+							(lower[s * this.numStates + t] + upper[s * this.numStates + t]) / 2;
 				}
 			}
 		}
@@ -295,86 +175,46 @@ public class SimplePolicyIteration<Value> extends DefaultBisimulation<Value> {
 	 * @param t a state
 	 * @pre. s > t
 	 * @return true if the coupling for the given states is optimal,
-	 * false otherwise
+	 *         false otherwise
 	 */
-	public boolean isOptimalCoupling(int s, int t) {
-		PointValuePair solution = this.getOptimalSolution(s, t);
+	private boolean isOptimalCoupling(int s, int t) {
+		SolutionPair solution = this.getOptimalSolution(s, t, this.distance);
 		double value = solution.getValue();
-		if (value + ACCURACY >= this.distance[s * this.numberOfStates + t]) {
+		if (value + ACCURACY >= this.distance[s * this.numStates + t]) {
 			return true;
 		} else {
-			double[] point = solution.getPoint();
-			for (int u = 0; u < this.numberOfStates; u++) {
-				for (int v = 0; v < this.numberOfStates; v++) {
-					if (this.toCompute[u * this.numberOfStates + v]) {
-						this.policy[s * this.numberOfStates + t] = point;
-					}
-				}
-			}
+			this.policy[s * this.numStates + t] = solution.getPoint();
+			setSymmetricCoupling(s, t);
 			return false;
 		}
-	}
-
-	/**
-	 * Returns an optimal solution for the given states.
-	 *
-	 * @param s a state
-	 * @param t a state
-	 * @pre. s > t
-	 * @return an optimal solution for the given states
-	 */
-	public PointValuePair getOptimalSolution(int s, int t) {
-		// objective function
-		LinearObjectiveFunction objective = new LinearObjectiveFunction(this.distance, 0);
-
-		// constraints
-		double[] coefficient = new double[this.numberOfStates * this.numberOfStates];
-		Collection<LinearConstraint> constraints = new ArrayList<LinearConstraint>();
-		for (int u = 0; u < this.numberOfStates; u++) {
-			Arrays.fill(coefficient, 0);
-			for (int v = 0; v < this.numberOfStates; v++) {
-				coefficient[u * this.numberOfStates + v] = 1;
-			}
-			constraints.add(new LinearConstraint(coefficient, Relationship.EQ, this.probabilities[s][u]));
-		}
-		for (int v = 0; v < this.numberOfStates; v++) {
-			Arrays.fill(coefficient, 0);
-			for (int u = 0; u < this.numberOfStates; u++) {
-				coefficient[u * numberOfStates + v] = 1;
-			}
-			constraints.add(new LinearConstraint(coefficient, Relationship.EQ, this.probabilities[t][v]));
-		}
-
-		SimplexSolver solver = new SimplexSolver();
-		return solver.optimize(objective, new LinearConstraintSet(constraints), GoalType.MINIMIZE, new NonNegativeConstraint(true));
 	}
 
 	/**
 	 * Returns the probabilistic bisimilarity distances for the
 	 * given labelled Markov chain.
 	 */
-	public void compute() {
+	public double[] compute(DTMC<Value> chain, List<BitSet> propBSs, Rewards<Value> rewards) {
+		long timer = System.currentTimeMillis();
+		this.initialize(chain, propBSs, rewards);
 		this.setDistance();
+		int iterations = 1;
 		boolean allOptimal;
 		do {
 			allOptimal = true;
-			for (int s = 0; s < this.numberOfStates && allOptimal; s++) {
-				for (int t = 0; t < this.numberOfStates && allOptimal; t++) {
-					if (this.toCompute[s * this.numberOfStates + t] && !this.isOptimalCoupling(s, t)) {
+			for (int s = 0; s < this.numStates && allOptimal; s++) {
+				for (int t = s + 1; t < this.numStates && allOptimal; t++) {
+					if (this.toCompute[s * this.numStates + t] && !this.isOptimalCoupling(s, t)) {
 						allOptimal = false;
 						this.setDistance();
 					}
 				}
 			}
+			iterations++;
 		} while (!allOptimal);
-	}
-
-	public void printDistances() {
-		for (int s = 0; s < this.numberOfStates; s++) {
-			for (int t = 0; t < this.numberOfStates; t++) {
-				mainLog.print(this.distance[s * this.numberOfStates + t] + ", ");
-			}
-			mainLog.println();
-		}
+		timer = System.currentTimeMillis() - timer;
+		mainLog.println("Iterations: " + iterations);
+		mainLog.println("Time for distance computation: " + timer / 1000.0 + " seconds.");
+		printArray(this.distance);
+		return this.distance;
 	}
 }

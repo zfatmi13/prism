@@ -28,6 +28,7 @@
 package explicit.bisim;
 
 import explicit.Model;
+import explicit.rewards.Rewards;
 import prism.PrismComponent;
 import prism.PrismException;
 
@@ -49,6 +50,7 @@ public class BisimulationTools<Value> {
 	protected final String DEFAULT = "new";
 	protected final String OLD = "old";
 	protected final String ROBUST = "robust";
+	protected final String SROBUST = "structurally-robust";
 
 	/**
 	 * Perform bisimulation minimisation on a model.
@@ -57,10 +59,13 @@ public class BisimulationTools<Value> {
 	 * @param bisimMethod The bisimulation minimization method
 	 * @param model       The model
 	 * @param propNames   Names of the propositions in {@code propBSs}
-	 * @param propBSs     Propositions (satisfying sets of states) to be preserved by bisimulation.
+	 * @param propBSs     Propositions (satisfying sets of states) to be preserved by bisimulation
+	 * @param rewName     Name of the rewards in {@code rewards}
+	 * @param rewards     Reward structure
 	 */
 	@SuppressWarnings("unchecked")
-	public Model<Value> minimise(PrismComponent parent, String bisimMethod, Model<Value> model, List<String> propNames, List<BitSet> propBSs) throws PrismException {
+	public Model<Value> minimise(PrismComponent parent, String bisimMethod, Model<Value> model, List<String> propNames,
+								 List<BitSet> propBSs, String rewName, Rewards<Value> rewards) throws PrismException {
 		if (bisimMethod == null) {
 			/* use default */
 			bisim = new DefaultBisimulation<Value>(parent);
@@ -72,6 +77,9 @@ public class BisimulationTools<Value> {
 					break;
 				case (ROBUST):
 					bisim = new RobustBisimulation<Value>(parent);
+					break;
+				case (SROBUST):
+					bisim = new StructurallyRobustBisimulation<Value>(parent);
 					break;
 				case (OLD):
 					bisim = new OldBisimulationMethod<Value>(parent);
@@ -97,7 +105,7 @@ public class BisimulationTools<Value> {
 					}
 			}
 		}
-		return bisim.minimise(model, propNames, propBSs);
+		return bisim.minimise(model, propNames, propBSs, rewName, rewards);
 	}
 
 	/**
