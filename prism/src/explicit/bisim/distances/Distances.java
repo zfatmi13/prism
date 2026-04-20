@@ -79,10 +79,10 @@ public abstract class Distances<Value> extends RobustBisimulation<Value> {
     protected double[][] policy;
 
     /**
-     * {@code differentLabels[s * numStates + t]} is true iff states s and t
-     * have different labels.
+     * {@code distanceOne[s * numStates + t]} is true iff states s and t
+     * have distance one.
      */
-    protected boolean[] differentLabels;
+    protected boolean[] distanceOne;
 
     /**
      * Represents a solution returned by the LP solver.
@@ -128,13 +128,13 @@ public abstract class Distances<Value> extends RobustBisimulation<Value> {
         this.toCompute = new boolean[this.numIndices];
         this.policy = new double[this.numIndices][this.numIndices];
         // use initial partition to determine if states have the same label
-        this.differentLabels = new boolean[this.numIndices];
+        this.distanceOne = new boolean[this.numIndices];
         initialisePartitionInfo(chain, propBSs, rewards);
         for (int s = 0; s < this.numStates; s++) {
             for (int t = s + 1; t < this.numStates; t++) {
                 if (this.partition[s] != this.partition[t]) {
-                    this.differentLabels[s * this.numStates + t] = true;
-                    this.differentLabels[t * this.numStates + s] = true; // symmetric
+                    this.distanceOne[s * this.numStates + t] = true;
+                    this.distanceOne[t * this.numStates + s] = true; // symmetric
                 }
             }
         }

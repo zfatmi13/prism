@@ -76,13 +76,45 @@ public class SimplePolicyIteration<Value> extends Distances<Value> {
 				if (this.partition[s] == this.partition[t]) {
 					this.bisimilar[s * this.numStates + t] = true;
 					this.bisimilar[t * this.numStates + s] = true;
-				} else if (this.differentLabels[s * this.numStates + t]) {
+				}
+			}
+		}
+		// compute the set of pairs of states that can reach a bisimilar pair
+		this.toCompute = new boolean[this.numIndices];
+		boolean done;
+		do {
+			done = true;
+			for (int s = 0; s < this.numStates; s++) {
+				for (int t = s + 1; t < this.numStates; t++) {
+					int index = s * this.numStates + t;
+					if (!this.toCompute[index] && !this.distanceOne[index] && !this.bisimilar[index]) {
+						checkSuccessors:
+						for (int u = 0; u < this.numStates; u++) {
+							if (this.probabilities[s][u] > 0) {
+								for (int v = 0; v < this.numStates; v++) {
+									if (this.probabilities[t][v] > 0
+											&& (this.toCompute[u * this.numStates + v] || this.bisimilar[u * this.numStates + v])) {
+										this.toCompute[s * this.numStates + t] = true;
+										this.toCompute[t * this.numStates + s] = true;
+										this.setCoupling(s, t); // symmetric
+										done = false;
+										break checkSuccessors;
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		} while (!done);
+		// set the distance one pairs
+		for (int s = 0; s < this.numStates; s++) {
+			for (int t = s + 1; t < this.numStates; t++) {
+				if (!this.bisimilar[s * this.numStates + t] && !this.toCompute[s * this.numStates + t]) {
+					this.distanceOne[s * this.numStates + t] = true;
+					this.distanceOne[t * this.numStates + s] = true;
 					this.distance[s * this.numStates + t] = 1;
 					this.distance[t * this.numStates + s] = 1;
-				} else {
-					this.toCompute[s * this.numStates + t] = true;
-					this.toCompute[t * this.numStates + s] = true;
-					this.setCoupling(s, t);
 				}
 			}
 		}
@@ -109,7 +141,7 @@ public class SimplePolicyIteration<Value> extends Distances<Value> {
 				if (this.bisimilar[u * this.numStates + v]) {
 					// lower[u * this.numStates + v] = 0;
 					// upper[u * this.numStates + v] = 0;
-				} else if (differentLabels[u * this.numStates + v]) {
+				} else if (distanceOne[u * this.numStates + v]) {
 					lower[u * this.numStates + v] = 1;
 					upper[u * this.numStates + v] = 1;
 				} else {
@@ -136,7 +168,7 @@ public class SimplePolicyIteration<Value> extends Distances<Value> {
 									// do nothing
 								} else {
 									double value = this.policy[s * this.numStates + t][u * this.numStates + v];
-									if (differentLabels[u * this.numStates + v]) {
+									if (distanceOne[u * this.numStates + v]) {
 										lower[s * this.numStates + t] += value;
 										upper[s * this.numStates + t] += value;
 									} else {

@@ -97,7 +97,7 @@ public class RobustBisimulation<Value> extends DefaultBisimulation<Value> {
 	 */
 	protected void robust(DTMC<Value> model, Evaluator<Value> eval, int dtmc) {
 		getSuccessors(model);
-		while (filter()) {
+		while (this.filter()) {
 			prune();
 			bisimilarity(model, eval, dtmc);
 		}

@@ -630,7 +630,7 @@ public class StateModelChecker extends PrismComponent
 			ExpressionReward rewardExpr = null;
 			String rewName = null;
 			Rewards<Value> rewards = null;
-			if (exprNew instanceof ExpressionReward) {
+			/*if (exprNew instanceof ExpressionReward) {
 				rewardExpr = (ExpressionReward) exprNew;
 			} else if (exprNew instanceof ExpressionFilter) {
 				if (((ExpressionFilter) exprNew).getOperand() instanceof ExpressionReward) {
@@ -641,11 +641,11 @@ public class StateModelChecker extends PrismComponent
 				int r = rewardExpr.getRewardStructIndexByIndexObject(rewardGen, constantValues);
 				rewName = rewardGen.getRewardStructName(r);
 				rewards = constructExpectedRewards(model, r);
-			}
+			}*/
 
 			Continuity<Value> continuity = new Continuity<Value>(this);
 			boolean[] discontinuity = continuity.decide((DTMC<Value>) model, propBSs, rewards);
-			double[] distances = continuity.getDistance();
+/*			double[] distances = continuity.getDistance();
 
 			Proximity<Value> proximity = new Proximity<Value>(this);
 			double[] similarity = proximity.compute((DTMC<Value>) model, propBSs, rewards);
@@ -665,7 +665,7 @@ public class StateModelChecker extends PrismComponent
 						}
 					}
 				}
-			}
+			}*/
 		}
 		// If required, do bisimulation minimisation
 		if (doBisim) {

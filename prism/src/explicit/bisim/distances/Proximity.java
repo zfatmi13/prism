@@ -85,7 +85,7 @@ public class Proximity<Value> extends Distances<Value> {
             for (int s = 0; s < this.numStates; s++) {
                 for (int t = s + 1; t < this.numStates; t++) {
                     int index = s * this.numStates + t;
-                    if (!this.canReachDiagonal[index] && !this.differentLabels[index]) {
+                    if (!this.canReachDiagonal[index] && !this.distanceOne[index]) {
                         checkSuccessors:
 						for (int u = 0; u < this.numStates; u++) {
                             if (this.probabilities[s][u] > 0) {

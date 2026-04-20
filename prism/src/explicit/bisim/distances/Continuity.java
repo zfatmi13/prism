@@ -59,37 +59,40 @@ public class Continuity<Value> extends SimplePolicyIteration<Value> {
         // compute the distances
         compute(chain, propBSs, rewards);
         long timer = System.currentTimeMillis();
+        int numBlocksOld = this.numBlocks;
         // compute robustly bisimilar pairs of states
         robust(chain, chain.getEvaluator(), 1);
         // initialize discontinuous pairs of states to those that are
         // bisimilar but not robustly bisimilar
         this.discontinuous = new boolean[this.numIndices];
-        for (int s = 0; s < this.numStates; s++) {
-            for (int t = s + 1; t < this.numStates; t++) {
-                if (this.bisimilar[s * this.numStates + t] && this.partition[s] != this.partition[t]) {
-                    this.discontinuous[s * this.numStates + t] = true;
-                    this.discontinuous[t * this.numStates + s] = true; // symmetric
-                }
-            }
-        }
-        // decide continuity
-        boolean changed;
-        do {
-            changed = false;
+        if (numBlocksOld != this.numBlocks) {
             for (int s = 0; s < this.numStates; s++) {
                 for (int t = s + 1; t < this.numStates; t++) {
-                    int index = s * this.numStates + t;
-                    if (!discontinuous[index] && !bisimilar[index] && !differentLabels[index] &&
-                            isPredecessor(s, t, discontinuous)) {
-                        if (isDiscontinuous(s, t)) {
-                            discontinuous[index] = true;
-                            discontinuous[t * this.numStates + s] = true; // symmetric
-                            changed = true;
-                        }
+                    if (this.bisimilar[s * this.numStates + t] && this.partition[s] != this.partition[t]) {
+                        this.discontinuous[s * this.numStates + t] = true;
+                        this.discontinuous[t * this.numStates + s] = true; // symmetric
                     }
                 }
             }
-        } while (changed);
+            // decide continuity
+            boolean changed;
+            do {
+                changed = false;
+                for (int s = 0; s < this.numStates; s++) {
+                    for (int t = s + 1; t < this.numStates; t++) {
+                        int index = s * this.numStates + t;
+                        if (!discontinuous[index] && !bisimilar[index] && !distanceOne[index] &&
+                                isPredecessor(s, t, discontinuous)) {
+                            if (isDiscontinuous(s, t)) {
+                                discontinuous[index] = true;
+                                discontinuous[t * this.numStates + s] = true; // symmetric
+                                changed = true;
+                            }
+                        }
+                    }
+                }
+            } while (changed);
+        }
         timer = System.currentTimeMillis() - timer;
         mainLog.println("Time to decide continuity: " + timer / 1000.0 + " seconds.");
         printComplementArray(this.discontinuous);
