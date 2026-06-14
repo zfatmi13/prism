@@ -35,6 +35,7 @@ import parser.VarList;
 import prism.PrismException;
 import prism.PrismFileLog;
 import prism.PrismLog;
+import prism.PrismLogWrapper;
 import userinterface.graph.Graph;
 
 /**
@@ -343,11 +344,8 @@ public class GenerateSimulationPath
 
 		if (file != null) {
 			log = new PrismFileLog(file.getPath());
-			if (!log.ready()) {
-				throw new PrismException("Could not open file \"" + file + "\" for output");
-			}
 		} else {
-			log = mainLog;
+			log = new PrismLogWrapper(mainLog);
 		}
 		displayer = new PathToText(log, engine.getModel(), engine.getRewardGenerator());
 		displayer.setColSep(simPathSep);

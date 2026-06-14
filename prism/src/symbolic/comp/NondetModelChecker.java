@@ -572,7 +572,7 @@ public class NondetModelChecker extends NonProbModelChecker
 
 		// For LTL/multi-obj model checking routines
 		mcLtl = new LTLModelChecker(prism);
-		mcMo = new MultiObjModelChecker(prism, prism);
+		mcMo = new MultiObjModelChecker(prism);
 
 		// Product is initially just the original model (we build it recursively)
 		modelProduct = model;
@@ -925,8 +925,7 @@ public class NondetModelChecker extends NonProbModelChecker
 		// and whether we want to use the corresponding algorithms
 		boolean useSimplePathAlgo = expr.isSimplePathFormula();
 
-		if (useSimplePathAlgo &&
-		    prism.getSettings().getBoolean(PrismSettings.PRISM_PATH_VIA_AUTOMATA) &&
+		if (useSimplePathAlgo && settings.getBoolean(PrismSettings.PRISM_PATH_VIA_AUTOMATA) &&
 		    LTLModelChecker.isSupportedLTLFormula(model.getModelType(), expr)) {
 			// If PRISM_PATH_VIA_AUTOMATA is true, we want to use the LTL engine
 			// whenever possible
@@ -1553,10 +1552,10 @@ public class NondetModelChecker extends NonProbModelChecker
 		da = mcLtl.constructDFAForCosafetyRewardLTL(this, model, expr, labelDDs);
 
 		// If required, export DA
-		if (prism.getSettings().getExportPropAut()) {
-			mainLog.println("Exporting DA to file \"" + prism.getSettings().getExportPropAutFilename() + "\"...");
-			PrintStream out = PrismUtils.newPrintStream(prism.getSettings().getExportPropAutFilename());
-			da.print(out, prism.getSettings().getExportPropAutType());
+		if (settings.getExportPropAut()) {
+			mainLog.println("Exporting DA to file \"" + settings.getExportPropAutFilename() + "\"...");
+			PrintStream out = PrismUtils.newPrintStream(settings.getExportPropAutFilename());
+			da.print(out, settings.getExportPropAutType());
 			out.close();
 			//da.printDot(new java.io.PrintStream("da.dot"));
 		}
@@ -2301,7 +2300,10 @@ public class NondetModelChecker extends NonProbModelChecker
 			                                          model.getAllDDRowVars(),
 			                                          model.getAllDDColVars(),
 			                                          model.getAllDDNondetVars());
+			StopWatch mecTimer = new StopWatch(mainLog);
+			mecTimer.start("MEC computation");
 			ecComp.computeMECStates();
+			mecTimer.stop("found " + ecComp.getMECStates().size() + " MECs");
 
 			JDDNode positiveECs = JDD.Constant(0);
 
@@ -2516,9 +2518,11 @@ public class NondetModelChecker extends NonProbModelChecker
 
 					ECComputer ecComp = new ECComputerDefault(prism, zeroReach, zeroTrans, zeroTrans01, model.getAllDDRowVars(), model.getAllDDColVars(),
 							model.getAllDDNondetVars());
+					StopWatch mecTimer = new StopWatch(mainLog);
+					mecTimer.start("zero-cost MEC computation");
 					ecComp.computeMECStates();
-
 					zeroCostEndComponents = ecComp.getMECStates();
+					mecTimer.stop("found " + zeroCostEndComponents.size() + " zero-cost MECs");
 
 					JDD.Deref(zeroReach);
 					JDD.Deref(zeroTrans);

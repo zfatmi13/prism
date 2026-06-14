@@ -46,6 +46,12 @@ public abstract class ModelExplicitWrapper<Value> extends ModelExplicit<Value>
 	}
 
 	@Override
+	public void setActions(List<Object> actions)
+	{
+		this.model.setActions(actions);
+	}
+
+	@Override
 	public void addInitialState(int i)
 	{
 		this.model.addInitialState(i);
@@ -267,5 +273,13 @@ public abstract class ModelExplicitWrapper<Value> extends ModelExplicit<Value>
 	public void exportToPrismLanguage(String filename, int precision) throws PrismException
 	{
 		this.model.exportToPrismLanguage(filename, precision);
+	}
+
+	// Standard methods
+
+	@Override
+	public String toString()
+	{
+		return model.toString();
 	}
 }

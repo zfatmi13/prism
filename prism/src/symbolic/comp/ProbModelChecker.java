@@ -350,10 +350,13 @@ public class ProbModelChecker extends NonProbModelChecker
 			// Compute bottom strongly connected components (BSCCs)
 			if (bsccComp) {
 				SCCComputer sccComputer = prism.getSCCComputer(model);
+				StopWatch sccTimer = new StopWatch(mainLog);
+				sccTimer.start("BSCC computation");
 				sccComputer.computeBSCCs();
 				bsccs = sccComputer.getBSCCs();
 				notInBSCCs = sccComputer.getNotInBSCCs();
 				numBSCCs = bsccs.size();
+				sccTimer.stop("found " + numBSCCs + " BSCCs");
 			}
 			// Unless we've been told to skip it
 			else {
@@ -495,8 +498,7 @@ public class ProbModelChecker extends NonProbModelChecker
 		// and whether we want to use the corresponding algorithms
 		boolean useSimplePathAlgo = expr.isSimplePathFormula();
 
-		if (useSimplePathAlgo &&
-		    prism.getSettings().getBoolean(PrismSettings.PRISM_PATH_VIA_AUTOMATA) &&
+		if (useSimplePathAlgo && settings.getBoolean(PrismSettings.PRISM_PATH_VIA_AUTOMATA) &&
 		    LTLModelChecker.isSupportedLTLFormula(model.getModelType(), expr)) {
 			// If PRISM_PATH_VIA_AUTOMATA is true, we want to use the LTL engine
 			// whenever possible
@@ -1019,10 +1021,10 @@ public class ProbModelChecker extends NonProbModelChecker
 		DA<BitSet, AcceptanceReach> da = mcLtl.constructDFAForCosafetyRewardLTL(this, model, expr, labelDDs);
 
 		// If required, export DA 
-		if (prism.getSettings().getExportPropAut()) {
-			mainLog.println("Exporting DA to file \"" + prism.getSettings().getExportPropAutFilename() + "\"...");
-			PrintStream out = PrismUtils.newPrintStream(prism.getSettings().getExportPropAutFilename());
-			da.print(out, prism.getSettings().getExportPropAutType());
+		if (settings.getExportPropAut()) {
+			mainLog.println("Exporting DA to file \"" + settings.getExportPropAutFilename() + "\"...");
+			PrintStream out = PrismUtils.newPrintStream(settings.getExportPropAutFilename());
+			da.print(out, settings.getExportPropAutType());
 			out.close();
 			//da.printDot(new java.io.PrintStream("da.dot"));
 		}
@@ -1106,10 +1108,13 @@ public class ProbModelChecker extends NonProbModelChecker
 		// compute bottom strongly connected components (bsccs)
 		if (bsccComp) {
 			SCCComputer sccComputer = prism.getSCCComputer(model);
+			StopWatch sccTimer = new StopWatch(mainLog);
+			sccTimer.start("BSCC computation");
 			sccComputer.computeBSCCs();
 			vectBSCCs = sccComputer.getBSCCs();
 			notInBSCCs = sccComputer.getNotInBSCCs();
 			numBSCCs = vectBSCCs.size();
+			sccTimer.stop("found " + numBSCCs + " BSCCs");
 		}
 		// unless we've been told to skip it
 		else {
@@ -1776,10 +1781,13 @@ public class ProbModelChecker extends NonProbModelChecker
 
 		// Compute bottom strongly connected components (BSCCs)
 		SCCComputer sccComputer = prism.getSCCComputer(model);
+		StopWatch sccTimer = new StopWatch(mainLog);
+		sccTimer.start("BSCC computation");
 		sccComputer.computeBSCCs();
 		bsccs = sccComputer.getBSCCs();
 		notInBSCCs = sccComputer.getNotInBSCCs();
 		numBSCCs = bsccs.size();
+		sccTimer.stop("found " + numBSCCs + " BSCCs");
 
 		// Find BSCCs with non-zero reward
 		JDD.Ref(sr);
@@ -2460,10 +2468,13 @@ public class ProbModelChecker extends NonProbModelChecker
 			// Compute bottom strongly connected components (BSCCs)
 			if (bsccComp) {
 				SCCComputer sccComputer = prism.getSCCComputer(model);
+				StopWatch sccTimer = new StopWatch(mainLog);
+				sccTimer.start("BSCC computation");
 				sccComputer.computeBSCCs();
 				bsccs = sccComputer.getBSCCs();
 				notInBSCCs = sccComputer.getNotInBSCCs();
 				numBSCCs = bsccs.size();
+				sccTimer.stop("found " + numBSCCs + " BSCCs");
 			}
 			// Unless we've been told to skip it
 			else {

@@ -126,7 +126,6 @@ public class PrismCL implements PrismModelListener
 	private String paramSwitch = null;
 
 	// files/filenames
-	private String mainLogFilename = "stdout";
 	private String settingsFilename = null;
 	private String modelFilename = null;
 	private String importInitDistFilename = null;
@@ -485,18 +484,15 @@ public class PrismCL implements PrismModelListener
 							mainLog.print("\nExporting vector of results for all states ");
 							mainLog.println(exportVectorFilename.equals("stdout") ? "below:" : "to file \"" + exportVectorFilename + "\"...");
 							boolean toStdout = exportVectorFilename.equals("stdout");
-							PrismLog tmpLog = toStdout ? prism.getMainLog() : new PrismFileLog(exportVectorFilename);
-							if (!tmpLog.ready()) {
-								errorAndExit("Couldn't open file \"" + exportVectorFilename + "\" for output");
-							}
 							try {
+								PrismLog tmpLog = toStdout ? prism.getMainLog() : new PrismFileLog(exportVectorFilename);
 								res.getVector().print(tmpLog, false, false, toStdout, toStdout);
+								res.getVector().clear();
+								if (!toStdout) {
+									tmpLog.close();
+								}
 							} catch (PrismException e) {
 								error(e.getMessage());
-							}
-							res.getVector().clear();
-							if (!toStdout) {
-								tmpLog.close();
 							}
 						}
 						
@@ -1120,10 +1116,7 @@ public class PrismCL implements PrismModelListener
 				// set working directory
 				else if (sw.equals("dir")) {
 					if (i < args.length - 1) {
-						String workingDir = args[++i];
-						if (PrismNative.setWorkingDirectory(workingDir) != 0) {
-							errorAndExit("Could not change working directory to " + workingDir);
-						}
+						Prism.setWorkingDirectory(args[++i]);
 					} else {
 						errorAndExit("No property specified for -" + sw + " switch");
 					}
@@ -1819,14 +1812,7 @@ public class PrismCL implements PrismModelListener
 				// specify main log (hidden option)
 				else if (sw.equals("mainlog")) {
 					if (i < args.length - 1) {
-						mainLogFilename = args[++i];
-						// use temporary storage because an error would go to the old log
-						log = new PrismFileLog(mainLogFilename);
-						if (!log.ready()) {
-							errorAndExit("Couldn't open log file \"" + mainLogFilename + "\"");
-						}
-						mainLog = log;
-						prism.setMainLog(mainLog);
+						processMainLogSwitch(args[++i]);
 					} else {
 						errorAndExit("No file specified for -" + sw + " switch");
 					}
@@ -2350,15 +2336,19 @@ public class PrismCL implements PrismModelListener
 		String halves[] = splitFilesAndOptions(filesOptionsString);
 		String fileString = halves[0];
 		String optionsString = halves[1];
+		// Split file into basename/extension
+		int i = fileString.lastIndexOf('.');
+		String basename = i == -1 ? fileString : fileString.substring(0, i);
+		String ext = i == -1 ? "" : fileString.substring(i + 1);
 		// Store some settings (here and in PRISM)
 		exportstrat = true;
-		exportStratFilename = fileString;
+		exportStratFilename = basename.equals("stdout") ? "stdout" : fileString;
 		exportStratOptions = new StrategyExportOptions();
 		prism.setGenStrat(true);
 		// Default strategy export type is based on filename extension
-		if (exportStratFilename.endsWith("tra")) {
+		if (ext.equals("tra")) {
 			exportStratOptions.setType(StrategyExportOptions.StrategyExportType.INDUCED_MODEL);
-		} else if (exportStratFilename.endsWith("dot")) {
+		} else if (ext.equals("dot")) {
 			exportStratOptions.setType(StrategyExportOptions.StrategyExportType.DOT_FILE);
 		} else {
 			exportStratOptions.setType(StrategyExportOptions.StrategyExportType.ACTIONS);
@@ -2432,6 +2422,35 @@ public class PrismCL implements PrismModelListener
 			else {
 				throw new PrismException("Unknown option \"" + opt + "\" for -exportstrat switch");
 			}
+		}
+	}
+
+	/**
+	 * Process the arguments (file, options) to the -mainlog switch
+	 */
+	private void processMainLogSwitch(String filesOptionsString) throws PrismException
+	{
+		// Split into file/options (on :)
+		String halves[] = splitFilesAndOptions(filesOptionsString);
+		String filename = halves[0];
+		String optionsString = halves[1];
+		// Process options
+		boolean append = false;
+		for (String opt : optionsString.split(",")) {
+			if (opt.equals("")) {
+				// ignore empty
+			} else if (opt.equals("append")) {
+				append = true;
+			} else {
+				throw new PrismException("Unknown option \"" + opt + "\" for -mainlog switch");
+			}
+		}
+		// Open the log
+		try {
+			mainLog = new PrismFileLog(filename, append);
+			prism.setMainLog(mainLog);
+		} catch (PrismException e) {
+			errorAndExit("Couldn't open log file \"" + filename + "\"");
 		}
 	}
 

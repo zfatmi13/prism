@@ -312,9 +312,12 @@ public class DTMCModelChecker extends ProbModelChecker
 		// Compute bottom strongly connected components (BSCCs)
 		SCCConsumerStore sccStore = new SCCConsumerStore();
 		SCCComputer sccComputer = SCCComputer.createSCCComputer(this, dtmc, sccStore);
+		StopWatch sccTimer = new StopWatch(getLog());
+		sccTimer.start("BSCC computation");
 		sccComputer.computeSCCs();
 		List<BitSet> bsccs = sccStore.getBSCCs();
 		numBSCCs = bsccs.size();
+		sccTimer.stop("found " + numBSCCs + " BSCCs");
 
 		// Find BSCCs with non-zero reward
 		BitSet bsccsNonZero = new BitSet();
@@ -612,6 +615,11 @@ public class DTMCModelChecker extends ProbModelChecker
 			}
 		} else {
 			no = new BitSet();
+			if (remain != null) {
+				no.or(remain);
+				no.or(target);
+				no.flip(0, n);
+			}
 		}
 		timerProb0 = System.currentTimeMillis() - timerProb0;
 		timerProb1 = System.currentTimeMillis();
@@ -2167,10 +2175,13 @@ public class DTMCModelChecker extends ProbModelChecker
 		// Compute bottom strongly connected components (BSCCs)
 		SCCConsumerStore sccStore = new SCCConsumerStore();
 		SCCComputer sccComputer = SCCComputer.createSCCComputer(this, dtmc, sccStore);
+		StopWatch sccTimer = new StopWatch(getLog());
+		sccTimer.start("BSCC computation");
 		sccComputer.computeSCCs();
 		List<BitSet> bsccs = sccStore.getBSCCs();
 		BitSet notInBSCCs = sccStore.getNotInBSCCs();
 		int numBSCCs = bsccs.size();
+		sccTimer.stop("found " + numBSCCs + " BSCCs");
 
 		// Compute support of initial distribution
 		int numInit = 0;
@@ -2285,10 +2296,13 @@ public class DTMCModelChecker extends ProbModelChecker
 		// Compute bottom strongly connected components (BSCCs)
 		SCCConsumerStore sccStore = new SCCConsumerStore();
 		SCCComputer sccComputer = SCCComputer.createSCCComputer(this, dtmc, sccStore);
+		StopWatch sccTimer = new StopWatch(getLog());
+		sccTimer.start("BSCC computation");
 		sccComputer.computeSCCs();
 		List<BitSet> bsccs = sccStore.getBSCCs();
 		BitSet notInBSCCs = sccStore.getNotInBSCCs();
 		int numBSCCs = bsccs.size();
+		sccTimer.stop("found " + numBSCCs + " BSCCs");
 
 		// Compute steady-state values for each BSCC...
 		double[] valueBSCCs = new double[numBSCCs];
