@@ -39,6 +39,7 @@ import java.util.Set;
 import explicit.CTMC;
 import explicit.DTMC;
 import explicit.MDP;
+import explicit.rewards.Rewards;
 import prism.Evaluator;
 import prism.PrismComponent;
 
@@ -207,7 +208,7 @@ public class RobustBisimulation<Value> extends DefaultBisimulation<Value> {
 	}
 
 	@Override
-	protected boolean minimiseMDP(MDP<Value> mdp) {
+	protected boolean minimiseMDP(MDP<Value> mdp, String rewName, Rewards<Value> rewards) {
 		mainLog.println("Robust bisimilarity not yet supported for MDPs: skipping minimisation.");
 		return false;
 	}

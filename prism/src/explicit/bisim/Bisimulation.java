@@ -45,7 +45,7 @@ import explicit.MDPSimple;
 import explicit.Model;
 import explicit.ModelExplicit;
 import explicit.rewards.Rewards;
-import explicit.rewards.StateRewardsSimple;
+import explicit.rewards.RewardsSimple;
 import parser.State;
 import prism.Evaluator;
 import prism.PrismComponent;
@@ -103,7 +103,9 @@ public abstract class Bisimulation<Value> extends PrismComponent {
 	 *
 	 * @param dtmc      The DTMC
 	 * @param propNames Names of the propositions in {@code propBSs}
-	 * @param propBSs   Propositions (satisfying sets of states) to be preserved by bisimulation.
+	 * @param propBSs   Propositions (satisfying sets of states) to be preserved by bisimulation
+	 * @param rewName   Name of the rewards in {@code rewards}
+	 * @param rewards   Reward structure to be preserved by bisimulation (may be null).
 	 */
 	protected DTMC<Value> minimiseDTMC(DTMC<Value> dtmc, List<String> propNames, List<BitSet> propBSs, String rewName, Rewards<Value> rewards) {
 		long timer = System.currentTimeMillis();
@@ -111,7 +113,7 @@ public abstract class Bisimulation<Value> extends PrismComponent {
 		minimised = minimiseDTMC(dtmc);
 		if (minimised) {
 			DTMCSimple<Value> dtmcNew = buildReducedDTMC(dtmc);
-			attachStatesAndLabels(dtmc, dtmcNew, propNames, propBSs);
+			attachStatesAndLabels(dtmc, dtmcNew, propNames, propBSs, rewName, rewards);
 			timer = System.currentTimeMillis() - timer;
 			mainLog.println("Minimisation: " + numStates + " to " + numBlocks + " States");
 			mainLog.println("Time for bisimulation computation: " + timer / 1000.0 + " seconds.");
@@ -128,7 +130,9 @@ public abstract class Bisimulation<Value> extends PrismComponent {
 	 *
 	 * @param ctmc      The CTMC
 	 * @param propNames Names of the propositions in {@code propBSs}
-	 * @param propBSs   Propositions (satisfying sets of states) to be preserved by bisimulation.
+	 * @param propBSs   Propositions (satisfying sets of states) to be preserved by bisimulation
+	 * @param rewName   Name of the rewards in {@code rewards}
+	 * @param rewards   Reward structure to be preserved by bisimulation (may be null).
 	 */
 	protected CTMC<Value> minimiseCTMC(CTMC<Value> ctmc, List<String> propNames, List<BitSet> propBSs, String rewName, Rewards<Value> rewards) {
 		long timer = System.currentTimeMillis();
@@ -136,7 +140,7 @@ public abstract class Bisimulation<Value> extends PrismComponent {
 		minimised = minimiseCTMC(ctmc);
 		if (minimised) {
 			CTMCSimple<Value> ctmcNew = buildReducedCTMC(ctmc);
-			attachStatesAndLabels(ctmc, ctmcNew, propNames, propBSs);
+			attachStatesAndLabels(ctmc, ctmcNew, propNames, propBSs, rewName, rewards);
 			timer = System.currentTimeMillis() - timer;
 			mainLog.println("Minimisation: " + numStates + " to " + numBlocks + " States");
 			mainLog.println("Time for bisimulation computation: " + timer / 1000.0 + " seconds.");
@@ -153,15 +157,17 @@ public abstract class Bisimulation<Value> extends PrismComponent {
 	 *
 	 * @param mdp       The MDP
 	 * @param propNames Names of the propositions in {@code propBSs}
-	 * @param propBSs   Propositions (satisfying sets of states) to be preserved by bisimulation.
+	 * @param propBSs   Propositions (satisfying sets of states) to be preserved by bisimulation
+	 * @param rewName   Name of the rewards in {@code rewards}
+	 * @param rewards   Reward structure to be preserved by bisimulation (may be null).
 	 */
 	protected MDP<Value> minimiseMDP(MDP<Value> mdp, List<String> propNames, List<BitSet> propBSs, String rewName, Rewards<Value> rewards) {
 		long timer = System.currentTimeMillis();
 		initialisePartitionInfo(mdp, propBSs, rewards); /* Create initial partition based on propositions */
-		minimised = minimiseMDP(mdp);
+		minimised = minimiseMDP(mdp, rewName, rewards);
 		if (minimised) {
 			MDPSimple<Value> mdpNew = buildReducedMDP(mdp);
-			attachStatesAndLabels(mdp, mdpNew, propNames, propBSs);
+			attachStatesAndLabels(mdp, mdpNew, propNames, propBSs, rewName, rewards);
 			timer = System.currentTimeMillis() - timer;
 			mainLog.println("Minimisation: " + numStates + " to " + numBlocks + " States");
 			mainLog.println("Time for bisimulation computation: " + timer / 1000.0 + " seconds.");
@@ -208,9 +214,11 @@ public abstract class Bisimulation<Value> extends PrismComponent {
 	 * and only if they are probabilistic bisimilar.
 	 *
 	 * @param mdp The MDP
-	 * @return True if the state space is minimised, false otherwise.
+	 * @return True if the state space is minimised, false otherwise
+	 * @param rewName   Name of the rewards in {@code rewards}
+	 * @param rewards   Reward structure containing transition rewards to be preserved by bisimulation (may be null).
 	 */
-	protected boolean minimiseMDP(MDP<Value> mdp) {
+	protected boolean minimiseMDP(MDP<Value> mdp, String rewName, Rewards<Value> rewards) {
 		mainLog.println("This bisimulation method is not yet supported for MDPs: skipping minimisation.");
 		return false;
 	}
@@ -362,7 +370,7 @@ public abstract class Bisimulation<Value> extends PrismComponent {
 	 * Computes the signatures (lifting of the probability distribution) of each
 	 * block in the current partition and stores it in {@code probabilities}.
 	 *
-	 * @param mdp  The MDP.
+	 * @param mdp  The MDP
 	 * @param eval the evaluator to manipulate values.
 	 */
 	protected void mdpLifting(MDP<Value> mdp, Evaluator<Value> eval) {
@@ -402,9 +410,11 @@ public abstract class Bisimulation<Value> extends PrismComponent {
 	 * @param model     The original model
 	 * @param modelNew  The minimised model
 	 * @param propNames The names of the propositions
-	 * @param propBSs   Satisfying states (of the minimised model) for the propositions.
+	 * @param propBSs   Satisfying states (of the minimised model) for the propositions
+	 * @param rewName   Name of the rewards in {@code rewards}
+	 * @param rewards   Reward structure from the original model (may be null).
 	 */
-	protected void attachStatesAndLabels(Model<Value> model, ModelExplicit<Value> modelNew, List<String> propNames, List<BitSet> propBSs) {
+	protected void attachStatesAndLabels(Model<Value> model, ModelExplicit<Value> modelNew, List<String> propNames, List<BitSet> propBSs, String rewName, Rewards<Value> rewards) {
 		// Attach states
 		if (model.getStatesList() != null) {
 			List<State> statesList = model.getStatesList();
@@ -431,6 +441,15 @@ public abstract class Bisimulation<Value> extends PrismComponent {
 				propBSnew.set(partition[j]);
 			}
 			modelNew.addLabel(propName, propBSnew);
+		}
+
+		// Build state rewards for the minimised model
+		if (rewards != null && rewards.hasStateRewards()) {
+			RewardsSimple<Value> rewardsNew = new RewardsSimple<Value>(numBlocks);
+			for (int i = 0; i < numStates; i++) {
+				rewardsNew.setStateReward(partition[i], rewards.getStateReward(i));
+			}
+			modelNew.addReward(rewName, rewardsNew);
 		}
 	}
 

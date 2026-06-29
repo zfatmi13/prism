@@ -79,6 +79,7 @@ import parser.ast.PropertiesFile;
 import parser.ast.Property;
 import parser.type.TypeBool;
 import parser.type.TypeDouble;
+import parser.visitor.ASTTraverse;
 import parser.visitor.ASTTraverseModify;
 import parser.visitor.ReplaceLabels;
 import prism.Accuracy;
@@ -604,10 +605,18 @@ public class StateModelChecker extends PrismComponent
 		if (doBisim) {
 			mainLog.println("\nPerforming bisimulation minimisation...");
 			// Check for unsupported filter operators
-			FilterOperator op = ((ExpressionFilter) expr).getOperatorType();
-			if (op == FilterOperator.SUM || op == FilterOperator.COUNT) {
+			try {
+				expr.accept(new ASTTraverse() {
+					public void visitPost(ExpressionFilter e) throws PrismLangException {
+						FilterOperator op = e.getOperatorType();
+						if (op == FilterOperator.SUM || op == FilterOperator.COUNT) {
+							throw new PrismLangException(op.keyword);
+						}
+					}
+				});
+			} catch (PrismLangException e) {
 				throw new PrismNotSupportedException("Bisimulation minimisation is not yet supported for " +
-						"filter(" + op.keyword + ", ...) properties");
+						"filter(" + e.getMessage() + ", ...) properties");
 			}
 			// Find and evaluate maximal propositional formulas in the property, to use as propositions for bisimulation minimisation
 			ArrayList<String> propNames = new ArrayList<String>();
@@ -1469,7 +1478,7 @@ public class StateModelChecker extends PrismComponent
 			// Look up property and recurse
 			Property prop = propertiesFile.lookUpPropertyObjectByName(e.getName());
 			if (prop != null) {
-				return prop.getExpression().accept(this);
+				return prop.getExpression().deepCopy().accept(this);
 			} else {
 				throw new PrismLangException("Unknown property reference " + e, e);
 			}
